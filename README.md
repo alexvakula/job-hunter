@@ -23,8 +23,8 @@ A small, self-hosted job-search tracker for one family, running at
 - see all services on the **Job sources** page and import from all of them at once (no passwords for
   external sites are ever stored),
 - get **automatic searches** every morning at 06:00: Job Bank (official feed) for each target
-  position, and a **company watchlist** checked through Greenhouse, Lever, Ashby and Workday public
-  job boards; lists such as ABTEC 5000 can be imported as CSV and their boards are found
+  position, and a **company watchlist** checked through the public job boards of Greenhouse, Lever,
+  Ashby, Workday, Pinpoint, Rippling, JazzHR and Jobvite; lists such as ABTEC 5000 can be imported as CSV and their boards are found
   automatically; results are scored 0–100 and sorted best-first in Suggestions,
 - keep their original resume (DOCX/PDF), and set up and test their sender email.
 

@@ -86,6 +86,40 @@ def test_import_from_all_runs_searches(setup, session):
     assert run.status == "ok" and run.trigger == "user"
 
 
+def test_more_boards_are_searched(two_users, session, app):
+    alice, _ = two_users
+    uid = _uid(session)
+    qa_lead(session, uid)
+    for t in ("pinpoint", "rippling", "jazzhr", "jobvite"):
+        _watch(session, uid, t, name=f"Acme {t}")
+    routes = standard_routes()
+    routes.pop("https://www.jobbank.gc.ca/jobsearch/feed/")
+    fake = FakeFetcher(routes)
+    app.dependency_overrides[get_fetcher] = lambda: fake
+    app.dependency_overrides[get_launcher] = lambda: lambda job: job()
+    try:
+        assert alice.post("/sources/import").status_code == 200
+    finally:
+        app.dependency_overrides.clear()
+    session.expire_all()
+    got = sorted(
+        (s.company, s.title)
+        for s in session.exec(
+            select(JobSuggestion).where(
+                JobSuggestion.user_id == uid, JobSuggestion.origin == "watchlist"
+            )
+        ).all()
+    )
+    assert got == [
+        ("Acme jazzhr", "QA Lead"),
+        ("Acme jobvite", "QA Lead & Test Architect"),
+        ("Acme pinpoint", "QA Lead"),
+        ("Acme rippling", "QA Lead"),
+    ]
+    companies = session.exec(select(WatchCompany).where(WatchCompany.user_id == uid)).all()
+    assert {c.status for c in companies} == {"ok"}
+
+
 def test_second_run_and_dismissed_are_not_resuggested(setup, session):
     alice, _, uid, _ = setup
     alice.post("/sources/import")

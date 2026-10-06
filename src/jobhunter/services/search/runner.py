@@ -174,6 +174,10 @@ SOURCE_FOR_BOARD = {
     "lever": "Lever",
     "ashby": "Ashby",
     "workday": "Workday",
+    "pinpoint": "Pinpoint",
+    "rippling": "Rippling",
+    "jazzhr": "JazzHR",
+    "jobvite": "Jobvite",
 }
 
 

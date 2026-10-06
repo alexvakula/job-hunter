@@ -23,11 +23,20 @@ from jobhunter.web import render
 router = APIRouter()
 MAX_CSV_BYTES = 5 * 1024 * 1024
 MAX_ROWS = 10_000
+UNSUPPORTED_LINK = (
+    "This careers link isn't from a job board the app can read. Supported: Greenhouse, Lever, "
+    "Ashby, Workday, Pinpoint, Rippling, JazzHR (applytojob.com) and Jobvite. On the company's "
+    "careers page, open one job and paste the link of that job page."
+)
 BOARD_LABELS = {
     "greenhouse": "Greenhouse",
     "lever": "Lever",
     "ashby": "Ashby",
     "workday": "Workday",
+    "pinpoint": "Pinpoint",
+    "rippling": "Rippling",
+    "jazzhr": "JazzHR",
+    "jobvite": "Jobvite",
     "unknown": "—",
 }
 
@@ -79,8 +88,7 @@ async def add_company(
             db,
             user,
             422,
-            error="Paste a careers link from Greenhouse, Lever, "
-            "Ashby or Workday (for example https://jobs.lever.co/acme).",
+            error=UNSUPPORTED_LINK,
         )
     name = str(form.get("name") or "").strip()[:200] or board.board_id
     clash = db.exec(
@@ -228,7 +236,7 @@ async def set_link(
     c = repo.get_owned(db, WatchCompany, company_id, user.id)
     board = parse_board_link(str((await request.form()).get("careers_url") or ""))
     if board is None:
-        return _page(request, db, user, 422, error="Unsupported careers link.")
+        return _page(request, db, user, 422, error=UNSUPPORTED_LINK)
     c.board_type, c.board_id, c.board_host, c.board_site = (
         board.type,
         board.board_id,

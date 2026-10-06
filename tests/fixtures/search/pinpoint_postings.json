@@ -1,0 +1,14 @@
+{"data": [
+ {"id": "1", "title": "QA Lead", "url": "https://acme.pinpointhq.com/en/postings/aaaa-1",
+  "description": "<div>Lead <strong>test automation</strong> with Selenium.</div>",
+  "key_responsibilities": "<ul><li>Own the test strategy</li></ul>",
+  "skills_knowledge_expertise": null,
+  "compensation_minimum": 140000.0, "compensation_maximum": 150000.0,
+  "compensation_currency": "CAD", "compensation_frequency": "year", "compensation_visible": true,
+  "workplace_type": "hybrid",
+  "location": {"id": "1", "city": "Vancouver ", "name": "Vancouver", "province": "British Columbia"}},
+ {"id": "2", "title": "Accountant", "url": "https://acme.pinpointhq.com/en/postings/aaaa-2",
+  "description": "<p>Books.</p>", "compensation_minimum": 60000.0, "compensation_maximum": 70000.0,
+  "compensation_currency": "CAD", "compensation_frequency": "year", "compensation_visible": false,
+  "workplace_type": "remote", "location": {"city": "Calgary", "province": "Alberta"}}
+]}

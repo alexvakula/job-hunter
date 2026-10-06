@@ -1,0 +1,8 @@
+[
+ {"uuid": "r-1", "name": "QA Lead", "department": {"id": "Eng", "label": "Engineering"},
+  "url": "https://ats.rippling.com/acme/jobs/r-1", "workLocation": {"label": "Calgary, AB", "id": "Calgary, AB"}},
+ {"uuid": "r-1", "name": "QA Lead", "department": {"id": "Eng", "label": "Engineering"},
+  "url": "https://ats.rippling.com/acme/jobs/r-1", "workLocation": {"label": "Remote (Canada)", "id": "Remote (Canada)"}},
+ {"uuid": "r-2", "name": "Office Manager", "department": {"id": "Ops", "label": "Operations"},
+  "url": "https://ats.rippling.com/acme/jobs/r-2", "workLocation": {"label": "Toronto, ON", "id": "Toronto, ON"}}
+]

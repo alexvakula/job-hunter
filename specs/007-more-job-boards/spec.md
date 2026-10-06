@@ -1,0 +1,52 @@
+# Feature Specification: More Company Job Boards
+
+**Feature Branch**: `007-more-job-boards`
+
+**Created**: 2026-10-05
+
+**Status**: Implemented
+
+**Input**: User description: "what does it mean 'Unsupported careers link'. Can you scan those
+resources and implement their support?"
+
+## Background
+
+The watchlist reads company job boards only through public feeds (constitution V). A careers link
+from any other system was refused with "Unsupported careers link". A survey of the 21 watchlist
+companies whose board was not found (2026-10-05) showed: Jobvite (2), JazzHR (2), Pinpoint (1),
+Rippling (1), Dayforce (1), Greenhouse under an unusual board name (2), and 12 pages that load their
+jobs with JavaScript.
+
+## User Story - Watch companies on more job boards (Priority: P1)
+
+The user pastes a careers link (or a link to one job) from Pinpoint, Rippling, JazzHR
+(applytojob.com) or Jobvite; the company is added and checked every morning like the others.
+Imported companies are also looked up automatically on Pinpoint, Rippling and JazzHR.
+
+**Acceptance Scenarios**:
+
+1. **Given** a link from one of the four systems, **Then** the company is added with that board.
+2. **Given** a morning run, **Then** matching postings from those boards become suggestions.
+3. **Given** an unsupported link, **Then** the message names every supported system and suggests
+   pasting the link of one job page.
+4. **Given** companies earlier marked "board not found", **Then** they are looked up again.
+
+## Requirements
+
+- **FR-001**: Links MUST be recognised: `<company>.pinpointhq.com`, `ats.rippling.com/<company>`,
+  `<company>.applytojob.com`, `jobs.jobvite.com/<company>`.
+- **FR-002**: Jobs MUST be read only from public sources allowed by robots.txt:
+  `<company>.pinpointhq.com/postings.json`, `api.rippling.com/platform/api/ats/v1/board/<company>/jobs`,
+  `app.jazz.co/feeds/export/jobs/<company>` (XML, parsed safely) and the public Jobvite list
+  `jobs.jobvite.com/<company>/jobs`.
+- **FR-003**: Closed JazzHR jobs are skipped; Rippling's one-entry-per-location is merged into one
+  posting; Pinpoint salary is used only when the employer shows it.
+- **FR-004**: Automatic lookup MUST try Pinpoint, Rippling and JazzHR (not Jobvite, whose list is a
+  full web page) and only the board services, never the company's website.
+- **FR-005**: Systems without a public feed (Dayforce, iCIMS, Taleo, SuccessFactors) stay
+  unsupported; their jobs are added by link or text.
+
+## Success Criteria
+
+- **SC-001**: Parser, link and lookup tests cover all four systems.
+- **SC-002**: The 7 watchlist companies identified in the survey are read in production.

@@ -67,4 +67,8 @@ def standard_routes():
         "https://api.lever.co/v0/postings/acme": "lever_postings.json",
         "https://api.ashbyhq.com/posting-api/job-board/acme": "ashby_board.json",
         "https://acme.wd3.myworkdayjobs.com/wday/cxs/acme/Careers/jobs": "workday_jobs.json",
+        "https://acme.pinpointhq.com/postings.json": "pinpoint_postings.json",
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs": "rippling_jobs.json",
+        "https://app.jazz.co/feeds/export/jobs/acme": "jazzhr_feed.xml",
+        "https://jobs.jobvite.com/acme/jobs": "jobvite_jobs.html",
     }

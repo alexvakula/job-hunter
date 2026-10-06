@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<jobs>
+	<publisher>JazzHR</publisher>
+	<company><![CDATA[Acme]]></company>
+	<job>
+		<id><![CDATA[job_1]]></id>
+		<status><![CDATA[Open]]></status>
+		<title><![CDATA[QA Lead]]></title>
+		<url><![CDATA[https://acme.applytojob.com/apply/AbC123/QA-Lead]]></url>
+		<city><![CDATA[Calgary]]></city>
+		<state><![CDATA[AB]]></state>
+		<country><![CDATA[Canada]]></country>
+		<description><![CDATA[<p>Lead <strong>QA</strong> &amp; test automation.</p>]]></description>
+	</job>
+	<job>
+		<id><![CDATA[job_2]]></id>
+		<status><![CDATA[Closed]]></status>
+		<title><![CDATA[Old QA Lead]]></title>
+		<url><![CDATA[https://acme.applytojob.com/apply/Old999/Old-QA-Lead]]></url>
+		<city><![CDATA[Calgary]]></city>
+		<state><![CDATA[AB]]></state>
+		<country><![CDATA[Canada]]></country>
+		<description><![CDATA[<p>Gone.</p>]]></description>
+	</job>
+</jobs>

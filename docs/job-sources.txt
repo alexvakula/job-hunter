@@ -20,9 +20,17 @@ Company watchlist: public job boards of chosen employers
   Lever        https://jobs.lever.co/<company>              API: api.lever.co
   Ashby        https://jobs.ashbyhq.com/<company>           API: api.ashbyhq.com
   Workday      https://<tenant>.wdN.myworkdayjobs.com/<site> JSON behind the public career site
-  How:   paste a company's careers link, or import a CSV of companies; boards are found through the
-         public board APIs (never the companies' own websites)
-  Rules: official public interfaces; at most 1 request per second per API host
+  Pinpoint     https://<company>.pinpointhq.com/            feed: <company>.pinpointhq.com/postings.json
+  Rippling     https://ats.rippling.com/<company>/jobs      API: api.rippling.com (public job board API)
+  JazzHR       https://<company>.applytojob.com/            feed: app.jazz.co/feeds/export/jobs/<company>
+  Jobvite      https://jobs.jobvite.com/<company>/jobs      the public careers list itself (no feed)
+  How:   paste a company's careers link (a link to any one job works too), or import a CSV of
+         companies; boards on Greenhouse, Lever, Ashby, Pinpoint, Rippling and JazzHR are found
+         through their public feeds (never the companies' own websites)
+  Rules: official public feeds; robots.txt allows each one; at most 1 request per second per API
+         host, 5 seconds between requests to the same careers site
+  Not supported: Dayforce, iCIMS, Taleo, SuccessFactors and similar systems without a public feed;
+         add those jobs by pasting a link or the posting text
 
 Claude web search (optional, admin only)
   How:   "Find jobs with Claude" and a daily run: Claude searches the web for the target positions
@@ -56,7 +64,8 @@ Claude web search (optional, admin only)
   GC Jobs          https://emploisfp-psjobs.cfp-psc.gc.ca/          download allowed
   Eluta.ca         https://www.eluta.ca/                           download allowed (single page)
   CharityVillage   https://charityvillage.com/                     download allowed
-  Greenhouse, Lever, Ashby, Workday job pages                      download allowed
+  Greenhouse, Lever, Ashby, Workday, Pinpoint, Rippling, JazzHR,
+  Jobvite job pages                                                download allowed
   LinkedIn, Indeed, Glassdoor, Workopolis                          link saved, paste the text
   Any other site                                                   link saved, paste the text
 

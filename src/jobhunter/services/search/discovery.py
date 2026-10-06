@@ -1,4 +1,5 @@
-"""Finding a company's public job board on Greenhouse, Lever or Ashby (FR-010).
+"""Finding a company's public job board on Greenhouse, Lever, Ashby, Pinpoint, Rippling or JazzHR
+(FR-010; feature 007). Jobvite and Workday boards are added by pasting a link.
 
 Only the boards' public APIs are contacted (never the company's own website), at most one
 request per second per service. Progress is stored per company, so it resumes after restarts.
@@ -19,7 +20,14 @@ from jobhunter.services.search.boards import Board, list_request
 
 log = logging.getLogger(__name__)
 BATCH = 60
-SERVICES = (("greenhouse", "Greenhouse"), ("lever", "Lever"), ("ashby", "Ashby"))
+SERVICES = (
+    ("greenhouse", "Greenhouse"),
+    ("lever", "Lever"),
+    ("ashby", "Ashby"),
+    ("pinpoint", "Pinpoint"),
+    ("rippling", "Rippling"),
+    ("jazzhr", "JazzHR"),
+)
 _SUFFIXES = {
     "inc",
     "incorporated",
@@ -70,12 +78,16 @@ def _exists(fetcher: Fetcher, source: Source, board: Board) -> bool:
     res = fetcher.fetch(url, source, method=method, json_body=body, max_bytes=10 * 1024 * 1024)
     if res.status != FETCHED:
         return False
+    if board.type == "jazzhr":
+        return "<jobs" in res.html[:2000]
     try:
         data = json.loads(res.html)
     except ValueError:
         return False
-    if board.type == "lever":
+    if board.type in ("lever", "rippling"):
         return isinstance(data, list)
+    if board.type == "pinpoint":
+        return isinstance(data, dict) and isinstance(data.get("data"), list)
     return isinstance(data, dict) and isinstance(data.get("jobs"), list)
 
 

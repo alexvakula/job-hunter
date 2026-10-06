@@ -69,7 +69,16 @@ def test_csv_import_and_discovery(two_users, session, inline):
     assert (beta.board_type, beta.board_id) == ("lever", "beta")
     assert (gamma.board_type, gamma.status, gamma.discovery_done) == ("unknown", "not_found", True)
     hosts = {c[1].split("/")[2] for c in inline.calls}
-    assert hosts <= {"boards-api.greenhouse.io", "api.lever.co", "api.ashbyhq.com"}
+    # only the job boards' public feeds are asked, never the companies' own websites
+    board_hosts = {
+        "boards-api.greenhouse.io",
+        "api.lever.co",
+        "api.ashbyhq.com",
+        "api.rippling.com",
+        "app.jazz.co",
+    }
+    assert all(h in board_hosts or h.endswith(".pinpointhq.com") for h in hosts)
+    assert "gamma.pinpointhq.com" in hosts and "api.rippling.com" in hosts
     page = alice.get("/watchlist").text
     assert "3 of 3 checked, 2 job boards found" in page and "board not found" in page
     # a company without a board can be given its link by hand
@@ -78,6 +87,42 @@ def test_csv_import_and_discovery(two_users, session, inline):
     )
     session.refresh(gamma)
     assert (gamma.board_type, gamma.status) == ("ashby", "ok")
+
+
+@pytest.mark.parametrize(
+    ("link", "expected"),
+    [
+        ("https://acme.pinpointhq.com/en/postings/aaaa-1", ("pinpoint", "acme")),
+        ("https://ats.rippling.com/acme/jobs", ("rippling", "acme")),
+        ("https://acme.applytojob.com/apply/AbC123/QA-Lead", ("jazzhr", "acme")),
+        ("https://jobs.jobvite.com/acme/job/oAbC1", ("jobvite", "acme")),
+    ],
+)
+def test_add_more_boards_by_link(two_users, session, inline, link, expected):
+    alice, _ = two_users
+    assert alice.post("/watchlist", data={"careers_url": link}).status_code == 303
+    (c,) = _companies(session)
+    assert (c.board_type, c.board_id, c.status) == (*expected, "ok")
+
+
+def test_discovery_finds_new_boards(two_users, session, inline):
+    alice, _ = two_users
+    inline.routes = {
+        "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs": ("fetched", "[]"),
+        "https://app.jazz.co/feeds/export/jobs/beta": (
+            "fetched",
+            '<?xml version="1.0"?><jobs><publisher>JazzHR</publisher></jobs>',
+        ),
+        "https://gamma.pinpointhq.com/postings.json": ("fetched", '{"data": []}'),
+    }
+    csv = "Company,Website\nAcme,acme.com\nBeta,beta.io\nGamma,gamma.dev\n"
+    alice.post("/watchlist/import", files={"file": ("list.csv", csv.encode(), "text/csv")})
+    found = [(c.name, c.board_type, c.board_id) for c in _companies(session)]
+    assert found == [
+        ("Acme", "rippling", "acme"),
+        ("Beta", "jazzhr", "beta"),
+        ("Gamma", "pinpoint", "gamma"),
+    ]
 
 
 def test_csv_semicolons_and_name_header(two_users, session, inline):

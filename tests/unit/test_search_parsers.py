@@ -192,6 +192,12 @@ def test_jobbank_feed_parsing():
             "https://acme.wd3.myworkdayjobs.com/Careers",
             ("workday", "acme", "acme.wd3.myworkdayjobs.com", "Careers"),
         ),
+        ("https://acme.pinpointhq.com/en/postings/aaaa-1", ("pinpoint", "acme", None, None)),
+        ("https://ats.rippling.com/acme/jobs/r-1", ("rippling", "acme", None, None)),
+        ("https://acme.applytojob.com/apply/AbC123/QA-Lead", ("jazzhr", "acme", None, None)),
+        ("https://acme.applytojob.com/", ("jazzhr", "acme", None, None)),
+        ("https://jobs.jobvite.com/acme/job/oAbC1", ("jobvite", "acme", None, None)),
+        ("https://jobs.jobvite.com/acme/jobs", ("jobvite", "acme", None, None)),
     ],
 )
 def test_parse_board_link(url, expected):
@@ -205,6 +211,11 @@ def test_parse_board_link(url, expected):
         "https://www.linkedin.com/jobs/view/1",
         "https://acme.com/careers",
         "https://jobs.lever.co/",
+        "https://app.pinpointhq.com/login",
+        "https://www.applytojob.com/",
+        "https://ats.rippling.com/",
+        "https://jobs.jobvite.com/",
+        "https://jobs.dayforcehcm.com/en-US/acme/CANDIDATEPORTAL",
         "not a url",
     ],
 )
@@ -230,6 +241,61 @@ def test_board_parsers():
     wd = boards.parse_list(wd_board, (FIX / "workday_jobs.json").read_text(), "Acme")
     assert wd[0].url == "https://acme.wd3.myworkdayjobs.com/Careers/job/Calgary/QA-Lead_R1"
     assert boards.parse_list(wd_board, "garbage", "Acme") == []
+
+
+def test_more_board_parsers():
+    pp = boards.parse_list(
+        boards.Board("pinpoint", "acme"), (FIX / "pinpoint_postings.json").read_text(), "Acme"
+    )
+    assert pp[0].location == "Vancouver, British Columbia" and pp[0].work_mode == "hybrid"
+    assert (pp[0].salary_min, pp[0].salary_max, pp[0].currency, pp[0].period) == (
+        140000,
+        150000,
+        "CAD",
+        "year",
+    )
+    assert "test automation" in pp[0].description and "Own the test strategy" in pp[0].description
+    assert pp[1].salary_min is None and pp[1].remote is True  # salary hidden by the employer
+
+    rp = boards.parse_list(
+        boards.Board("rippling", "acme"), (FIX / "rippling_jobs.json").read_text(), "Acme"
+    )
+    assert [p.title for p in rp] == ["QA Lead", "Office Manager"]  # one posting per job
+    assert rp[0].location == "Calgary, AB; Remote (Canada)" and rp[0].remote is True
+
+    jz = boards.parse_list(
+        boards.Board("jazzhr", "acme"), (FIX / "jazzhr_feed.xml").read_text(), "Acme"
+    )
+    assert [p.title for p in jz] == ["QA Lead"]  # closed jobs skipped
+    assert jz[0].location == "Calgary, AB, Canada" and "test automation" in jz[0].description
+    assert boards.parse_list(boards.Board("jazzhr", "acme"), "<not xml", "Acme") == []
+
+    jv = boards.parse_list(
+        boards.Board("jobvite", "acme"), (FIX / "jobvite_jobs.html").read_text(), "Acme"
+    )
+    assert [(p.title, p.location, p.url) for p in jv] == [
+        (
+            "QA Lead & Test Architect",
+            "Vancouver, British Columbia",
+            "https://jobs.jobvite.com/acme/job/oAbC1",
+        ),
+        ("Account Executive", "Remote, Canada", "https://jobs.jobvite.com/acme/job/oDeF2"),
+    ]
+    assert jv[1].remote is True
+    assert boards.parse_list(boards.Board("jobvite", "acme"), "<html></html>", "Acme") == []
+
+
+@pytest.mark.parametrize(
+    ("kind", "url"),
+    [
+        ("pinpoint", "https://acme.pinpointhq.com/postings.json"),
+        ("rippling", "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs"),
+        ("jazzhr", "https://app.jazz.co/feeds/export/jobs/acme"),
+        ("jobvite", "https://jobs.jobvite.com/acme/jobs"),
+    ],
+)
+def test_more_board_list_requests(kind, url):
+    assert boards.list_request(boards.Board(kind, "acme")) == ("GET", url, None)
 
 
 # --- discovery candidates ------------------------------------------------------------------

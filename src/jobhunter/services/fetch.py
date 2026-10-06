@@ -224,6 +224,8 @@ API_HOST_INTERVALS = {
     "boards-api.greenhouse.io": 1.0,
     "api.lever.co": 1.0,
     "api.ashbyhq.com": 1.0,
+    "api.rippling.com": 1.0,
+    "app.jazz.co": 1.0,
 }
 
 

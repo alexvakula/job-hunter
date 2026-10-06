@@ -437,7 +437,8 @@ class WatchCompany(SQLModel, table=True):
     user_id: int = Field(sa_column=_fk("user_account.id"))
     name: str = Field(max_length=200)
     website: str | None = None
-    board_type: str = "unknown"  # greenhouse | lever | ashby | workday | unknown
+    # greenhouse | lever | ashby | workday | pinpoint | rippling | jazzhr | jobvite | unknown
+    board_type: str = "unknown"
     board_id: str | None = None
     board_host: str | None = None  # Workday host, e.g. acme.wd3.myworkdayjobs.com
     board_site: str | None = None  # Workday site, e.g. Careers
