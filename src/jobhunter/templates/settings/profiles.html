@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Target positions{% endblock %}
+{% block content %}
+<h1>Target positions</h1>
+<p><a href="/settings/profiles/new" class="btn btn-small">+ New target position</a></p>
+{% if not profiles %}
+<p class="card">No target positions yet. Create one to describe what you're looking for; new jobs get tagged with your default.</p>
+{% endif %}
+{% for p in profiles %}
+<section class="card{% if p.is_archived %} muted{% endif %}">
+  <h2>{{ p.name }}
+    {% if p.is_default %}<span class="badge">default</span>{% endif %}
+    {% if p.is_archived %}<span class="badge">archived</span>{% endif %}</h2>
+  {% if p.synonyms %}<p><strong>Also called:</strong> {{ p.synonyms|join(', ') }}</p>{% endif %}
+  <ul>
+    {% for r in rules[p.id] %}
+    <li>{{ r.place }} — {% for m in r.work_modes %}{{ work_modes[m] }}{% if not loop.last %}, {% endif %}{% endfor %}
+      {% if r.salary_floor is not none %} · from {{ r.salary_currency }} {{ "{:,}".format(r.salary_floor) }}/year{% endif %}</li>
+    {% endfor %}
+  </ul>
+  {% if p.include_keywords %}<p><strong>Must mention:</strong> {{ p.include_keywords|join(', ') }}</p>{% endif %}
+  {% if p.exclude_keywords %}<p><strong>Skip if it mentions:</strong> {{ p.exclude_keywords|join(', ') }}</p>{% endif %}
+  {% if p.seniority %}<p><strong>Seniority:</strong> {{ p.seniority }}</p>{% endif %}
+  <p>
+    <a href="/settings/profiles/{{ p.id }}" class="btn btn-secondary btn-small">Edit</a>
+    {% if not p.is_default and not p.is_archived %}
+    <form method="post" action="/settings/profiles/{{ p.id }}/default" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn btn-secondary btn-small">Make default</button>
+    </form>{% endif %}
+    <form method="post" action="/settings/profiles/{{ p.id }}/archive" class="inline">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      {% if p.is_archived %}<input type="hidden" name="restore" value="1"><button type="submit" class="btn btn-secondary btn-small">Restore</button>
+      {% else %}<button type="submit" class="btn btn-secondary btn-small">Archive</button>{% endif %}
+    </form>
+  </p>
+</section>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Master resume{% endblock %}
+{% block content %}
+<h1>Master resume</h1>
+<p class="muted">Your complete, true resume. Tailored resumes for each job are built only from what is here: employers, titles, dates, education and certifications always come from this page.</p>
+{% set e = errors or {} %}
+{% if saved %}<p class="flash">Saved.</p>{% endif %}
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+{% if imported %}<p class="warn">Imported from “{{ imported }}”. Check every section, fix anything the import got wrong, then <strong>Save</strong> (nothing is saved yet).</p>{% endif %}
+{% if e %}<p class="error" role="alert">Please fix the highlighted fields.</p>{% endif %}
+{% if current_file %}
+<form method="post" action="/resume/import" class="inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-secondary btn-small">Import from my uploaded resume ({{ current_file.original_name }})</button>
+</form>
+{% if claude_enabled %}<form method="post" action="/resume/claude-import" class="inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-secondary btn-small">Import with Claude</button>
+</form>{% endif %}
+{% else %}<p class="muted">Tip: <a href="/settings/resume">upload your resume</a> to pre-fill this page.</p>{% endif %}
+
+<form method="post" action="/resume" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <h2>Contact</h2>
+  <div class="row">
+    <label>Full name <input name="name" value="{{ d.name }}"></label>
+    <label>Email <input name="email" value="{{ d.email }}">{% if e.email %}<span class="field-error">{{ e.email }}</span>{% endif %}</label>
+    <label>Phone <input name="phone" value="{{ d.phone }}"></label>
+    <label>Location <input name="location" value="{{ d.location }}" placeholder="Calgary, AB"></label>
+  </div>
+  <label>Links (one per line) <textarea name="links" rows="2">{{ d.links|join('\n') }}</textarea></label>
+  <h2>Summary</h2>
+  <textarea name="summary" rows="4">{{ d.summary }}</textarea>
+
+  <h2>Experience</h2>
+  <div id="rows-experience">
+  {% for x in rows.experience %}{% set i = loop.index0 %}
+  <fieldset class="rule" data-row="experience">
+    <input type="hidden" name="experience-{{ i }}-id" value="{{ x.id or '' }}">
+    {% if e['experience-%d'|format(i)] %}<p class="field-error">{{ e['experience-%d'|format(i)] }}</p>{% endif %}
+    <div class="row">
+      <label>Title <input name="experience-{{ i }}-title" value="{{ x.title or '' }}"></label>
+      <label>Employer <input name="experience-{{ i }}-employer" value="{{ x.employer or '' }}"></label>
+      <label>Location <input name="experience-{{ i }}-location" value="{{ x.location or '' }}"></label>
+      <label>Start <input name="experience-{{ i }}-start" value="{{ x.start or '' }}" placeholder="Jan 2020"></label>
+      <label>End <input name="experience-{{ i }}-end" value="{{ x.end or '' }}" placeholder="Present"></label>
+    </div>
+    <label>Achievements (one per line) <textarea name="experience-{{ i }}-bullets" rows="4">{{ (x.bullets or [])|join('\n') }}</textarea></label>
+  </fieldset>
+  {% endfor %}
+  </div>
+  <button type="button" class="btn btn-secondary btn-small" data-add-row="experience">+ Another job</button>
+
+  <h2>Education</h2>
+  <div id="rows-education">
+  {% for x in rows.education %}{% set i = loop.index0 %}
+  <fieldset class="rule row" data-row="education">
+    {% if e['education-%d'|format(i)] %}<p class="field-error">{{ e['education-%d'|format(i)] }}</p>{% endif %}
+    <label>Institution <input name="education-{{ i }}-institution" value="{{ x.institution or '' }}"></label>
+    <label>Credential <input name="education-{{ i }}-credential" value="{{ x.credential or '' }}" placeholder="BSc"></label>
+    <label>Field <input name="education-{{ i }}-field" value="{{ x.field or '' }}"></label>
+    <label>Start <input name="education-{{ i }}-start" value="{{ x.start or '' }}"></label>
+    <label>End <input name="education-{{ i }}-end" value="{{ x.end or '' }}"></label>
+  </fieldset>
+  {% endfor %}
+  </div>
+  <button type="button" class="btn btn-secondary btn-small" data-add-row="education">+ Another school</button>
+
+  <h2>Certifications</h2>
+  <div id="rows-certifications">
+  {% for x in rows.certifications %}{% set i = loop.index0 %}
+  <fieldset class="rule row" data-row="certifications">
+    {% if e['certifications-%d'|format(i)] %}<p class="field-error">{{ e['certifications-%d'|format(i)] }}</p>{% endif %}
+    <label>Name <input name="certifications-{{ i }}-name" value="{{ x.name or '' }}"></label>
+    <label>Issuer <input name="certifications-{{ i }}-issuer" value="{{ x.issuer or '' }}"></label>
+    <label>Date <input name="certifications-{{ i }}-date" value="{{ x.date or '' }}"></label>
+  </fieldset>
+  {% endfor %}
+  </div>
+  <button type="button" class="btn btn-secondary btn-small" data-add-row="certifications">+ Another certification</button>
+
+  <h2>Skills</h2>
+  <label>Comma- or line-separated <textarea name="skills" rows="3">{{ d.skills|join(', ') }}</textarea></label>
+  <p><button type="submit" class="btn">Save master resume</button></p>
+</form>
+{% endblock %}

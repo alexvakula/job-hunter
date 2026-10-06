@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}Jobs{% endblock %}
+{% block content %}
+<h1>Jobs</h1>
+<form method="get" action="/jobs" class="card filters" hx-get="/jobs" hx-target="#job-rows" hx-push-url="true"
+      hx-trigger="change, keyup changed delay:400ms from:input[type=search]">
+  <div class="row">
+    <label>Search <input type="search" name="q" value="{{ f.q }}" placeholder="title, company or text"></label>
+    <label>Status
+      <select name="status" multiple size="4">
+        {% for s in all_statuses %}<option value="{{ s }}"{% if s in f.status %} selected{% endif %}>{{ status_labels[s] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>Company <input name="company" value="{{ f.company }}"></label>
+    <label>Source
+      <select name="source"><option value="">Any</option>
+        {% for id, name in sources.items() %}<option value="{{ id }}"{% if f.source == id %} selected{% endif %}>{{ name }}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Work mode
+      <select name="work_mode"><option value="">Any</option>
+        {% for value, label in work_modes.items() %}<option value="{{ value }}"{% if f.work_mode == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+    </label>
+    {% if profiles %}
+    <label>Target position
+      <select name="profile"><option value="">Any</option>
+        {% for p in profiles %}<option value="{{ p.id }}"{% if f.profile == p.id %} selected{% endif %}>{{ p.name }}</option>{% endfor %}
+      </select>
+    </label>
+    {% endif %}
+    <label>Found from <input type="date" name="found_from" value="{{ f.found_from or '' }}"></label>
+    <label>Found to <input type="date" name="found_to" value="{{ f.found_to or '' }}"></label>
+    <label class="check"><input type="checkbox" name="followup_due" value="1"{% if f.followup_due %} checked{% endif %}> Follow-up due</label>
+  </div>
+  <input type="hidden" name="sort" value="{{ f.sort }}"><input type="hidden" name="dir" value="{{ f.dir }}">
+  <button type="submit" class="btn btn-small">Apply</button> <a href="/jobs" class="btn btn-secondary btn-small">Clear</a>
+</form>
+{% include "jobs/_rows.html" %}
+{% endblock %}

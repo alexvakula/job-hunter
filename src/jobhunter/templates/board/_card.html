@@ -1,0 +1,6 @@
+<li class="kcard" id="card-{{ job.id }}" data-job-id="{{ job.id }}">
+  <div class="t"><a href="/jobs/{{ job.id }}">{{ job.title }}</a></div>
+  <div>{{ job.company }}</div>
+  {% if job.location %}<div class="muted">{{ job.location }}</div>{% endif %}
+  <div class="muted">{{ status_labels[job.status] }} · {{ since.get(job.id, 'today') }}</div>
+</li>

@@ -1,0 +1,135 @@
+{
+ "jobs": [
+  {
+   "absolute_url": "https://job-boards.greenhouse.io/acme/jobs/101",
+   "id": 101,
+   "internal_job_id": 6547054002,
+   "location": {
+    "name": "Calgary, Alberta, Canada"
+   },
+   "metadata": [
+    {
+     "id": 4595831002,
+     "name": "Quota Coverage Type",
+     "value": "Account Executive",
+     "value_type": "single_select"
+    }
+   ],
+   "title": "QA Lead",
+   "updated_at": "2026-10-02T11:31:50-04:00",
+   "first_published": "2026-10-02T11:31:50-04:00",
+   "requisition_id": "7109",
+   "company_name": "Acme",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": false,
+     "requires_processing_consent": false,
+     "requires_retention_consent": false,
+     "retention_period": null,
+     "demographic_data_consent_applies": false
+    }
+   ],
+   "language": "en"
+  },
+  {
+   "absolute_url": "https://job-boards.greenhouse.io/acme/jobs/102",
+   "id": 102,
+   "internal_job_id": 6547054002,
+   "location": {
+    "name": "Remote - United States"
+   },
+   "metadata": [
+    {
+     "id": 4595831002,
+     "name": "Quota Coverage Type",
+     "value": "Account Executive",
+     "value_type": "single_select"
+    }
+   ],
+   "title": "Senior QA Lead",
+   "updated_at": "2026-10-02T11:31:50-04:00",
+   "first_published": "2026-10-02T11:31:50-04:00",
+   "requisition_id": "7109",
+   "company_name": "Acme",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": false,
+     "requires_processing_consent": false,
+     "requires_retention_consent": false,
+     "retention_period": null,
+     "demographic_data_consent_applies": false
+    }
+   ],
+   "language": "en"
+  },
+  {
+   "absolute_url": "https://job-boards.greenhouse.io/acme/jobs/103",
+   "id": 103,
+   "internal_job_id": 6547054002,
+   "location": {
+    "name": "Austin, TX"
+   },
+   "metadata": [
+    {
+     "id": 4595831002,
+     "name": "Quota Coverage Type",
+     "value": "Account Executive",
+     "value_type": "single_select"
+    }
+   ],
+   "title": "QA Lead",
+   "updated_at": "2026-10-02T11:31:50-04:00",
+   "first_published": "2026-10-02T11:31:50-04:00",
+   "requisition_id": "7109",
+   "company_name": "Acme",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": false,
+     "requires_processing_consent": false,
+     "requires_retention_consent": false,
+     "retention_period": null,
+     "demographic_data_consent_applies": false
+    }
+   ],
+   "language": "en"
+  },
+  {
+   "absolute_url": "https://job-boards.greenhouse.io/acme/jobs/104",
+   "id": 104,
+   "internal_job_id": 6547054002,
+   "location": {
+    "name": "Calgary, Alberta, Canada"
+   },
+   "metadata": [
+    {
+     "id": 4595831002,
+     "name": "Quota Coverage Type",
+     "value": "Account Executive",
+     "value_type": "single_select"
+    }
+   ],
+   "title": "Backend Engineer",
+   "updated_at": "2026-10-02T11:31:50-04:00",
+   "first_published": "2026-10-02T11:31:50-04:00",
+   "requisition_id": "7109",
+   "company_name": "Acme",
+   "data_compliance": [
+    {
+     "type": "gdpr",
+     "requires_consent": false,
+     "requires_processing_consent": false,
+     "requires_retention_consent": false,
+     "retention_period": null,
+     "demographic_data_consent_applies": false
+    }
+   ],
+   "language": "en"
+  }
+ ],
+ "meta": {
+  "total": 4
+ }
+}

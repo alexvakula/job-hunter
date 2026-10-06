@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Job mailbox{% endblock %}
+{% block content %}
+<h1>Job mailbox</h1>
+{% set e = errors or {} %}
+{% if request.query_params.get('saved') %}<p class="flash">Saved.</p>{% endif %}
+<p class="muted">A mailbox used only for your job search (for example sam.jobs@example.org). Job Hunter saves every email in it, links employer emails to your jobs, turns job alerts into suggestions and sorts the mailbox into folders. Your personal mailbox is never read.</p>
+<form method="post" action="/settings/mailbox" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="row">
+    <label>Job mailbox address <input name="address" type="email" value="{{ s.address or '' }}" placeholder="you.jobs@example.org" required>
+      {% if e.address %}<span class="field-error">{{ e.address }}</span>{% endif %}</label>
+    <label>Mail server <input name="imap_host" value="{{ s.imap_host }}">{% if e.imap_host %}<span class="field-error">{{ e.imap_host }}</span>{% endif %}</label>
+    <label>IMAP port <input name="imap_port" inputmode="numeric" value="{{ s.imap_port }}">{% if e.imap_port %}<span class="field-error">{{ e.imap_port }}</span>{% endif %}</label>
+  </div>
+  <p><strong>Mailbox password:</strong>
+    <span class="badge">password: {{ 'configured' if password_configured else 'not configured' }}</span>
+    <span class="muted">Never entered here; the admin sets <code>{{ password_env }}</code> on the server (the same password is used for sending).</span></p>
+  <label class="check"><input type="checkbox" name="checking_enabled" value="1"{% if s.checking_enabled %} checked{% endif %}> Check for new mail every 15 minutes</label>
+  <label class="check"><input type="checkbox" name="filing_enabled" value="1"{% if s.filing_enabled %} checked{% endif %}> Sort the mailbox into folders (Job Alerts/…, Employers/…)</label>
+  <p><button type="submit" class="btn">Save</button></p>
+</form>
+{% endblock %}

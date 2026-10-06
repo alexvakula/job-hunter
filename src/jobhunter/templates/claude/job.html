@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Claude: {{ labels[job.kind] }}{% endblock %}
+{% block content %}
+<p><a href="/claude">← Claude</a></p>
+<h1>Claude: {{ labels[job.kind] }}</h1>
+{% include "claude/_job.html" %}
+{% endblock %}

@@ -1,0 +1,32 @@
+{
+ "total": 3,
+ "jobPostings": [
+  {
+   "title": "QA Lead",
+   "externalPath": "/job/Calgary/QA-Lead_R1",
+   "locationsText": "Calgary, AB",
+   "postedOn": "Posted 20 Days Ago",
+   "bulletFields": [
+    "JR2003248"
+   ]
+  },
+  {
+   "title": "Test Lead",
+   "externalPath": "/job/Remote-USA/Test-Lead_R2",
+   "locationsText": "Remote - USA",
+   "postedOn": "Posted 20 Days Ago",
+   "bulletFields": [
+    "JR2003248"
+   ]
+  },
+  {
+   "title": "QA Lead",
+   "externalPath": "/job/Houston/QA-Lead_R3",
+   "locationsText": "Houston, TX",
+   "postedOn": "Posted 20 Days Ago",
+   "bulletFields": [
+    "JR2003248"
+   ]
+  }
+ ]
+}

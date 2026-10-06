@@ -1,0 +1,69 @@
+{# Editable job fields. Expects: draft (dict), errors (dict|None), sources, profiles, work_modes #}
+{% set e = errors or {} %}
+<div class="row">
+  <label>Title *
+    <input name="title" value="{{ draft.title or '' }}" maxlength="200" required>
+    {% if e.title %}<span class="field-error">{{ e.title }}</span>{% endif %}
+  </label>
+  <label>Company *
+    <input name="company" value="{{ draft.company or '' }}" maxlength="200" required>
+    {% if e.company %}<span class="field-error">{{ e.company }}</span>{% endif %}
+  </label>
+</div>
+<div class="row">
+  <label>Location <input name="location" value="{{ draft.location or '' }}"></label>
+  <label>Work mode
+    <select name="work_mode">
+      {% for value, label in work_modes.items() %}
+      <option value="{{ value }}"{% if (draft.work_mode or 'unknown') == value %} selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Source
+    <select name="source_id">
+      {% for s in sources %}
+      <option value="{{ s.id }}"{% if draft.source_id|string == s.id|string %} selected{% endif %}>{{ s.name }}</option>
+      {% endfor %}
+    </select>
+    {% if e.source_id %}<span class="field-error">{{ e.source_id }}</span>{% endif %}
+  </label>
+  <label>Target position
+    <select name="profile_id">
+      <option value="">(none)</option>
+      {% set chosen = (draft.profile_id if draft and draft.profile_id not in (none, '') else default_profile_id)|string %}
+      {% for p in profiles %}
+      <option value="{{ p.id }}"{% if chosen == p.id|string %} selected{% endif %}>{{ p.name }}</option>
+      {% endfor %}
+    </select>
+    {% if e.profile_id %}<span class="field-error">{{ e.profile_id }}</span>{% endif %}
+  </label>
+</div>
+<label>Link
+  <input name="url" type="url" value="{{ draft.url or '' }}" placeholder="https://…">
+  {% if e.url %}<span class="field-error">{{ e.url }}</span>{% endif %}
+</label>
+<div class="row">
+  <label>Salary as written <input name="salary_text" value="{{ draft.salary_text or '' }}"></label>
+  <label>Min <input name="salary_min" inputmode="numeric" value="{{ draft.salary_min if draft.salary_min is not none else '' }}">
+    {% if e.salary_min %}<span class="field-error">{{ e.salary_min }}</span>{% endif %}</label>
+  <label>Max <input name="salary_max" inputmode="numeric" value="{{ draft.salary_max if draft.salary_max is not none else '' }}">
+    {% if e.salary_max %}<span class="field-error">{{ e.salary_max }}</span>{% endif %}</label>
+  <label>Currency
+    <select name="salary_currency">
+      <option value=""></option>
+      {% for c in ["CAD", "USD"] %}<option{% if draft.salary_currency == c %} selected{% endif %}>{{ c }}</option>{% endfor %}
+    </select>
+    {% if e.salary_currency %}<span class="field-error">{{ e.salary_currency }}</span>{% endif %}
+  </label>
+  <label>Per
+    <select name="salary_period">
+      <option value=""></option>
+      <option value="year"{% if draft.salary_period == 'year' %} selected{% endif %}>year</option>
+      <option value="hour"{% if draft.salary_period == 'hour' %} selected{% endif %}>hour</option>
+    </select>
+    {% if e.salary_period %}<span class="field-error">{{ e.salary_period }}</span>{% endif %}
+  </label>
+</div>
+<label>Description (full posting text)
+  <textarea name="description" rows="14">{{ draft.description or '' }}</textarea>
+</label>

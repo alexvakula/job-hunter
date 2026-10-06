@@ -1,0 +1,12 @@
+<section id="emails" class="card">
+  <h2>Emails</h2>
+  {% if job_emails %}
+  <ol class="timeline">
+    {% for e in job_emails %}
+    <li><span class="muted">{{ (e.sent_at or e.saved_at)|local_dt }}</span>
+      {% if e.direction == 'out' %}<span class="badge">sent</span> to {{ e.to_addrs|join(', ') }}{% else %}from {{ e.from_name or e.from_addr }}{% endif %}
+      — <a href="/mail/{{ e.id }}">{{ e.subject or '(no subject)' }}</a></li>
+    {% endfor %}
+  </ol>
+  {% else %}<p class="muted">No emails linked to this job yet. Emails from its contacts or company arrive here automatically.</p>{% endif %}
+</section>

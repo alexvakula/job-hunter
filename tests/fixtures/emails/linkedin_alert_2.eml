@@ -1,0 +1,27 @@
+From: LinkedIn <jobs-listings@linkedin.com>
+To: sam.jobs@example.org
+Subject: 2 new jobs for Test Lead
+Date: Sat, 03 Oct 2026 04:20:00 +0000
+Message-ID: <li-alert-2@linkedin.com>
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============5210199839467582041=="
+
+--===============5210199839467582041==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+See the HTML version.
+
+--===============5210199839467582041==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<html><body><table><tr><td><a href=3D"https://www.linkedin.com/comm/jobs/view=
+/4099999001?trk=3Dx">Test Lead</a><p>Glacier Bank</p><p>Calgary, AB</p></td><=
+/tr><tr><td><a href=3D"https://www.linkedin.com/comm/jobs/view/4099999002?trk=
+=3Dx">QA Manager</a><p>Prairie Software</p><p>Edmonton, AB</p></td></tr></tab=
+le></body></html>
+
+--===============5210199839467582041==--

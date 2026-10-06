@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Log in{% endblock %}
+{% block content %}
+<section class="card narrow">
+  <h1>Log in</h1>
+  {% if expired %}<p class="flash">Your session expired. Please log in again.</p>{% endif %}
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/login">
+    <input type="hidden" name="csrf_token" value="{{ login_csrf }}">
+    <input type="hidden" name="next" value="{{ next or '' }}">
+    <input type="hidden" name="expired" value="{{ '1' if expired else '' }}">
+    <label>Username <input name="username" autocomplete="username" required autofocus value="{{ username or '' }}"></label>
+    <label>Password <input name="password" type="password" autocomplete="current-password" required></label>
+    <button type="submit" class="btn">Log in</button>
+  </form>
+</section>
+{% endblock %}

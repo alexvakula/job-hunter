@@ -1,0 +1,23 @@
+# Deployed copy lives in /opt/docker/job-hunter/ next to its .env and ./data.
+# Builds from the checkout in JOBHUNTER_SRC; the host name is JOBHUNTER_HOST (both in .env).
+services:
+  job-hunter:
+    build: ${JOBHUNTER_SRC}
+    image: job-hunter:latest
+    container_name: job-hunter
+    expose:
+      - "8000"
+    volumes:
+      - ./data:/data
+    env_file: .env
+    environment:
+      - VIRTUAL_HOST=${JOBHUNTER_HOST}
+      - VIRTUAL_PORT=8000
+      - LETSENCRYPT_HOST=${JOBHUNTER_HOST}
+    networks:
+      - webserver_default
+    restart: unless-stopped
+
+networks:
+  webserver_default:
+    external: true

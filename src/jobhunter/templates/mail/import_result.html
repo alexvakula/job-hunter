@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Import from all{% endblock %}
+{% block content %}
+<h1>Import from all</h1>
+{% if mail %}<p class="{{ 'flash' if mail.ok else 'error' }}">Job mailbox: {{ mail.message }}</p>{% endif %}
+{% if run %}{% include "sources/_run.html" %}{% else %}<p class="warn">A search is already running.</p>{% endif %}
+<p><a href="/suggestions" class="btn">See suggested jobs</a> <a href="/sources" class="btn btn-secondary">Back to sources</a></p>
+{% endblock %}

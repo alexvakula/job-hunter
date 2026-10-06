@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ source.name if source else 'New source' }}{% endblock %}
+{% block content %}
+<h1>{{ source.name if source else 'New source' }}</h1>
+{% include "admin/_nav.html" %}
+{% set e = errors or {} %}
+<form method="post" action="{{ '/admin/sources/' ~ source.id if source else '/admin/sources/new' }}" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="row">
+    <label>Name <input name="name" value="{{ values.name or '' }}" required>
+      {% if e.name %}<span class="field-error">{{ e.name }}</span>{% endif %}</label>
+    <label>Type
+      <select name="type"{% if source and source.is_system %} disabled{% endif %}>
+        {% for value, label in types.items() %}<option value="{{ value }}"{% if values.type == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+      </select>
+      {% if e.type %}<span class="field-error">{{ e.type }}</span>{% endif %}</label>
+  </div>
+  <label>Sites (comma-separated, e.g. careers.acme.com)
+    <input name="domains" value="{{ values.domains|join(', ') }}">
+    {% if e.domains %}<span class="field-error">{{ e.domains }}</span>{% endif %}</label>
+  <label class="check"><input type="checkbox" name="fetch_allowed" value="1"{% if values.fetch_allowed %} checked{% endif %}> May download job pages from these sites (only if their terms allow it)</label>
+  <label class="check"><input type="checkbox" name="alert_sender" value="1"{% if values.alert_sender %} checked{% endif %}> Sends job-alert emails (emails from these sites become suggested jobs)</label>
+  <label class="check"><input type="checkbox" name="enabled" value="1"{% if values.enabled %} checked{% endif %}> Enabled (shown in pickers)</label>
+  <p><button type="submit" class="btn">Save</button> <a href="/admin/sources" class="btn btn-secondary">Cancel</a></p>
+</form>
+{% if source and not source.is_system %}
+<section class="card">
+  <h2>Delete</h2>
+  {% if delete_error %}<p class="error">{{ delete_error }}</p>{% endif %}
+  <form method="post" action="/admin/sources/{{ source.id }}/delete">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="check"><input type="checkbox" name="confirm" value="yes"> Yes, delete "{{ source.name }}"</label>
+    <button type="submit" class="btn btn-danger btn-small">Delete</button>
+  </form>
+</section>
+{% elif delete_error %}<p class="error">{{ delete_error }}</p>{% endif %}
+{% endblock %}

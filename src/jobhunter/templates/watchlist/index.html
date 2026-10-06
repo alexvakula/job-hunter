@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Company watchlist{% endblock %}
+{% block content %}
+<h1>Company watchlist</h1>
+<p class="muted">Companies whose job boards are checked every morning. Postings that match your target positions appear under Suggestions.</p>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+{% if notice %}<p class="flash">{{ notice }}</p>{% endif %}
+<div class="row">
+  <form method="post" action="/watchlist" class="card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2>Add a company</h2>
+    <label>Careers link <input name="careers_url" type="url" required placeholder="https://jobs.lever.co/acme"></label>
+    <label>Name (optional) <input name="name" maxlength="200"></label>
+    <p class="muted">Supported: Greenhouse, Lever, Ashby and Workday career sites.</p>
+    <button type="submit" class="btn btn-small">Add</button>
+  </form>
+  <form method="post" action="/watchlist/import" enctype="multipart/form-data" class="card">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <h2>Import a list (CSV)</h2>
+    <label>File <input type="file" name="file" accept=".csv,text/csv" required></label>
+    <p class="muted">e.g. the <a href="https://technologyalberta.com/abtec-5000/" rel="noopener noreferrer" target="_blank">ABTEC 5000</a> list saved as CSV. Needs a column with “company” or “name” in its header; a “website” column helps find each company's job board.</p>
+    <button type="submit" class="btn btn-small">Import</button>
+  </form>
+</div>
+{% if progress.total %}<p class="muted">Imported list: {{ progress.checked }} of {{ progress.total }} checked, {{ progress.found }} job boards found.{% if progress.checked < progress.total %} Still searching in the background; reload to update.{% endif %}</p>{% endif %}
+{% if companies %}
+<div class="table-wrap"><table>
+  <thead><tr><th>Company</th><th>Board</th><th>Status</th><th>Last checked</th><th></th></tr></thead>
+  <tbody>
+  {% for c in companies %}
+  <tr{% if c.paused %} class="muted"{% endif %}>
+    <td>{{ c.name }}{% if c.website %} <span class="muted">{{ c.website }}</span>{% endif %}</td>
+    <td>{{ labels[c.board_type] }}{% if c.board_id %} <span class="muted">{{ c.board_id }}{% if c.board_site %}/{{ c.board_site }}{% endif %}</span>{% endif %}</td>
+    <td>{% if c.paused %}paused{% elif c.status == 'not_found' %}board not found{% elif c.status == 'pending' %}looking for board…{% elif c.status == 'error' %}<span class="error">{{ c.last_error }}</span>{% else %}ok{% endif %}</td>
+    <td class="muted">{{ c.last_checked_at|local_dt if c.last_checked_at else '—' }}</td>
+    <td>
+      {% if c.board_type == 'unknown' and c.discovery_done %}
+      <details><summary class="link">Set careers link</summary>
+        <form method="post" action="/watchlist/{{ c.id }}/link"><input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <input name="careers_url" type="url" required placeholder="https://boards.greenhouse.io/…"> <button type="submit" class="btn btn-small">Save</button></form>
+      </details>{% endif %}
+      <form method="post" action="/watchlist/{{ c.id }}/pause" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="link">{{ 'Resume' if c.paused else 'Pause' }}</button></form> ·
+      <form method="post" action="/watchlist/{{ c.id }}/delete" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="link">Remove</button></form>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}<p class="card muted">No companies yet.</p>{% endif %}
+{% endblock %}

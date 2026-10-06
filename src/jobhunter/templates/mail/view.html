@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}{{ email.subject or 'Email' }}{% endblock %}
+{% block content %}
+<p><a href="/mail">← Mail</a></p>
+<h1>{{ email.subject or '(no subject)' }}</h1>
+<section class="card">
+  <p><strong>From:</strong> {{ email.from_name }} &lt;{{ email.from_addr }}&gt;<br>
+     <strong>To:</strong> {{ email.to_addrs|join(', ') }}{% if email.cc_addrs %}<br><strong>Cc:</strong> {{ email.cc_addrs|join(', ') }}{% endif %}<br>
+     <strong>Date:</strong> {{ (email.sent_at or email.saved_at)|local_dt }}
+     {% if email.folder %}<br><strong>Folder:</strong> {{ email.folder }}{% endif %}
+     {% if email.direction == 'out' and email.send_status %}<br><strong>Result:</strong> {{ email.send_status }}{% if email.send_error %} — {{ email.send_error }}{% endif %}{% endif %}</p>
+  {% if attachments %}<p><strong>Attachments:</strong>
+    {% for a in attachments %}{% if a.skipped %}<span class="muted">{{ a.filename }} (too large, not saved)</span>{% else %}<a href="/mail/{{ email.id }}/attachments/{{ a.id }}">{{ a.filename }}</a> <span class="muted">({{ (a.size_bytes / 1024)|round(0)|int }} KB)</span>{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+</section>
+
+{% if suggestions %}
+<section class="card">
+  <h2>Jobs in this alert</h2>
+  <ul>{% for s in suggestions %}<li>{{ s.title }}{% if s.company %} — {{ s.company }}{% endif %}{% if s.location %} ({{ s.location }}){% endif %} <span class="badge">{{ s.state }}</span></li>{% endfor %}</ul>
+  <p><a href="/suggestions">Review suggested jobs →</a></p>
+</section>
+{% endif %}
+
+{% if email.kind != 'alert' %}
+<section class="card">
+  <h2>Job</h2>
+  {% if job %}<p>Linked to <a href="/jobs/{{ job.id }}">{{ job.title }} at {{ job.company }}</a> <span class="muted">({{ email.link_method }})</span></p>{% endif %}
+  {% if candidates %}<p class="warn">This email could belong to several jobs: {% for c in candidates %}<a href="/jobs/{{ c.id }}">{{ c.company }} – {{ c.title }}</a>{% if not loop.last %}, {% endif %}{% endfor %}. Pick one below.</p>{% endif %}
+  <form method="post" action="/mail/{{ email.id }}/link" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Link to job
+      <select name="job_id"><option value="">(not linked)</option>
+        {% for j in jobs %}<option value="{{ j.id }}"{% if email.job_id == j.id %} selected{% endif %}>{{ j.company }} – {{ j.title }}</option>{% endfor %}
+      </select></label>
+    <div><button type="submit" class="btn btn-small">Save</button></div>
+  </form>
+</section>
+{% endif %}
+
+<section class="card email-body">
+  {% if email.body_html %}{{ email.body_html|safe }}{% else %}<div class="description">{{ email.body_text }}</div>{% endif %}
+</section>
+
+<section class="card">
+  <form method="post" action="/mail/{{ email.id }}/delete">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="check"><input type="checkbox" name="confirm" value="yes"> Yes, delete it from Job Hunter (the mailbox copy stays)</label>
+    <button type="submit" class="btn btn-danger btn-small">Delete</button>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,27 @@
+From: Bad Actor <bad@evil.example>
+To: sam.jobs@example.org
+Subject: Totally normal
+Date: Sat, 03 Oct 2026 04:13:00 +0000
+Message-ID: <bad-1@evil.example>
+MIME-Version: 1.0
+Content-Type: multipart/alternative;
+ boundary="===============4169885637419266391=="
+
+--===============4169885637419266391==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+See the HTML version.
+
+--===============4169885637419266391==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<p onclick=3D"steal()">Hi<script>alert(1)</script><img src=3D"https://evil.ex=
+ample/track.png"><iframe src=3D"https://evil.example"></iframe><form action=
+=3D"https://evil.example"><input name=3Dp></form><a href=3D"javascript:alert(=
+1)">x</a><a href=3D"https://evil.example/ok">link</a><style>body{background:u=
+rl(https://evil.example/bg.png)}</style></p>
+
+--===============4169885637419266391==--

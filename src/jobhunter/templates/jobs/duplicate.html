@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block title %}Already tracked{% endblock %}
+{% block content %}
+<h1>Already tracked</h1>
+<p class="error">You're already tracking a job with this link:
+  <a href="/jobs/{{ existing.id }}">{{ existing.title }} at {{ existing.company }}</a>.</p>
+<p><a href="/jobs/{{ existing.id }}" class="btn">Open it</a> <a href="/jobs" class="btn btn-secondary">Back to jobs</a></p>
+{% endblock %}

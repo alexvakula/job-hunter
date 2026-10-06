@@ -1,0 +1,83 @@
+{
+ "jobs": [
+  {
+   "id": "bbbb-1",
+   "title": "QA Lead",
+   "department": "Engineering",
+   "team": "Backend",
+   "employmentType": "FullTime",
+   "location": "Calgary",
+   "shouldDisplayCompensationOnJobPostings": true,
+   "secondaryLocations": [],
+   "publishedAt": "2026-04-07T17:12:35.753+00:00",
+   "isListed": true,
+   "isRemote": false,
+   "workplaceType": "OnSite",
+   "address": {
+    "postalAddress": {
+     "addressRegion": "NY",
+     "addressCountry": "USA",
+     "addressLocality": "New York City"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/acme/bbbb-1",
+   "applyUrl": "https://jobs.ashbyhq.com/acme/bbbb-1/application",
+   "descriptionHtml": "<p>Ship quality.</p>",
+   "descriptionPlain": "Ship quality.",
+   "compensation": {}
+  },
+  {
+   "id": "bbbb-2",
+   "title": "Manager, QA",
+   "department": "Engineering",
+   "team": "Backend",
+   "employmentType": "FullTime",
+   "location": "Remote (US)",
+   "shouldDisplayCompensationOnJobPostings": true,
+   "secondaryLocations": [],
+   "publishedAt": "2026-04-07T17:12:35.753+00:00",
+   "isListed": true,
+   "isRemote": true,
+   "workplaceType": "Remote",
+   "address": {
+    "postalAddress": {
+     "addressRegion": "NY",
+     "addressCountry": "USA",
+     "addressLocality": "New York City"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/acme/bbbb-2",
+   "applyUrl": "https://jobs.ashbyhq.com/acme/bbbb-2/application",
+   "descriptionHtml": "<p>Ship quality.</p>",
+   "descriptionPlain": "Ship quality.",
+   "compensation": {}
+  },
+  {
+   "id": "bbbb-3",
+   "title": "QA Lead",
+   "department": "Engineering",
+   "team": "Backend",
+   "employmentType": "FullTime",
+   "location": "Berlin",
+   "shouldDisplayCompensationOnJobPostings": true,
+   "secondaryLocations": [],
+   "publishedAt": "2026-04-07T17:12:35.753+00:00",
+   "isListed": true,
+   "isRemote": false,
+   "workplaceType": "OnSite",
+   "address": {
+    "postalAddress": {
+     "addressRegion": "NY",
+     "addressCountry": "USA",
+     "addressLocality": "New York City"
+    }
+   },
+   "jobUrl": "https://jobs.ashbyhq.com/acme/bbbb-3",
+   "applyUrl": "https://jobs.ashbyhq.com/acme/bbbb-3/application",
+   "descriptionHtml": "<p>Ship quality.</p>",
+   "descriptionPlain": "Ship quality.",
+   "compensation": {}
+  }
+ ],
+ "apiVersion": "1"
+}

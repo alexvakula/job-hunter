@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Add a job{% endblock %}
+{% block content %}
+<h1>Add a job</h1>
+{% for kind, text in (messages or []) %}<p class="{{ kind }}">{{ text }}</p>{% endfor %}
+
+{% if dupes and dupes.url_match %}
+<p class="error">You're already tracking this job:
+  <a href="/jobs/{{ dupes.url_match.id }}">{{ dupes.url_match.title }} at {{ dupes.url_match.company }}</a>.
+  It can't be added twice.</p>
+{% elif dupes and dupes.possible %}
+<div class="warn">
+  <strong>Possible duplicate.</strong> You already have:
+  <ul>{% for j in dupes.possible %}<li><a href="/jobs/{{ j.id }}">{{ j.title }} at {{ j.company }}</a> ({{ status_labels[j.status] }}, found {{ j.date_found }})</li>{% endfor %}</ul>
+  Open the existing job, or save this one anyway.
+</div>
+{% endif %}
+
+{% if draft is none or show_text %}
+<form method="post" action="/jobs/prefill" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <p class="muted">Paste the job's link, its text, or both. You'll check the details before anything is saved.</p>
+  <label>Job link <input name="url" type="url" placeholder="https://…" value="{{ draft.url if draft else '' }}"></label>
+  <label>Posting text <textarea name="text" rows="10" placeholder="Paste the whole posting here"></textarea></label>
+  <button type="submit" class="btn">Fill in details</button>
+  {% if draft is none %}<a href="#manual" class="btn btn-secondary" onclick="document.getElementById('manual').hidden=false">Enter by hand</a>{% endif %}
+</form>
+{% endif %}
+
+<form method="post" action="/jobs" class="card" id="manual"{% if draft is none %} hidden{% endif %}>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% if suggestion_id %}<input type="hidden" name="suggestion_id" value="{{ suggestion_id }}">{% endif %}
+  {% if confirm_needed or (dupes and dupes.possible and not dupes.url_match) %}<input type="hidden" name="confirm_possible_duplicate" value="1">{% endif %}
+  {% include "jobs/_form.html" with context %}
+  {% if not (dupes and dupes.url_match) %}
+  <button type="submit" class="btn">{% if dupes and dupes.possible %}Save anyway{% else %}Save job{% endif %}</button>
+  {% endif %}
+  <a href="/jobs" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}

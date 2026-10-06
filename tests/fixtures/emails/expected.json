@@ -1,0 +1,81 @@
+{
+ "linkedin_alert_1.eml": [
+  {
+   "title": "QA Lead",
+   "company": "Acme Robotics",
+   "location": "Calgary, Alberta, Canada (Hybrid)",
+   "url": "https://www.linkedin.com/jobs/view/4012345678"
+  },
+  {
+   "title": "Senior Test Manager",
+   "company": "Northwind Analytics",
+   "location": "Vancouver, BC (On-site)",
+   "url": "https://www.linkedin.com/jobs/view/4012345679"
+  },
+  {
+   "title": "Quality Assurance Lead",
+   "company": "Lumen Health",
+   "location": "United States (Remote)",
+   "url": "https://www.linkedin.com/jobs/view/4012345680"
+  }
+ ],
+ "linkedin_alert_2.eml": [
+  {
+   "title": "Test Lead",
+   "company": "Glacier Bank",
+   "location": "Calgary, AB",
+   "url": "https://www.linkedin.com/jobs/view/4099999001"
+  },
+  {
+   "title": "QA Manager",
+   "company": "Prairie Software",
+   "location": "Edmonton, AB",
+   "url": "https://www.linkedin.com/jobs/view/4099999002"
+  }
+ ],
+ "indeed_alert_1.eml": [
+  {
+   "title": "QA Lead",
+   "company": "Maple Leaf Foods",
+   "location": "Toronto, ON",
+   "url": "https://ca.indeed.com/viewjob?jk=a1b2c3d4e5f6a7b8"
+  },
+  {
+   "title": "Software Test Manager",
+   "company": "Big Energy Corp",
+   "location": "Calgary, AB",
+   "url": "https://ca.indeed.com/viewjob?jk=0f9e8d7c6b5a4321"
+  }
+ ],
+ "indeed_alert_2.eml": [
+  {
+   "title": "Quality Lead",
+   "company": "Rogers",
+   "location": "Remote",
+   "url": "https://ca.indeed.com/viewjob?jk=1111222233334444"
+  }
+ ],
+ "glassdoor_alert_1.eml": [
+  {
+   "title": "QA Lead",
+   "company": "Shopify",
+   "location": "Remote",
+   "url": "https://www.glassdoor.ca/job-listing/?jl=1009123456789"
+  },
+  {
+   "title": "Test Manager",
+   "company": "TELUS",
+   "location": "Vancouver, BC",
+   "url": "https://www.glassdoor.ca/job-listing/?jl=1009123456790"
+  }
+ ],
+ "jobbank_alert_1.eml": [
+  {
+   "title": "Quality assurance (QA) lead",
+   "company": "Prairie Software Ltd.",
+   "location": "Calgary (AB)",
+   "url": "https://www.jobbank.gc.ca/jobsearch/jobposting/41234567"
+  }
+ ],
+ "linkedin_not_alert.eml": []
+}

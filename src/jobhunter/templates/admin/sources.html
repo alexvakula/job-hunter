@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Job sources{% endblock %}
+{% block content %}
+<h1>Job sources</h1>
+{% include "admin/_nav.html" %}
+<p class="muted">Shared by everyone. Only sites marked "may download" are ever fetched when a link is pasted, and only if their robots.txt allows it.</p>
+<p><a href="/admin/sources/new" class="btn btn-small">+ New source</a></p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Name</th><th>Type</th><th>Sites</th><th>May download</th><th>Enabled</th></tr></thead>
+  <tbody>
+  {% for s in sources %}
+  <tr{% if not s.enabled %} class="muted"{% endif %}>
+    <td><a href="/admin/sources/{{ s.id }}">{{ s.name }}</a></td>
+    <td>{{ types.get(s.type, s.type) }}</td>
+    <td>{{ s.domains|join(', ') or '—' }}</td>
+    <td>{{ 'yes' if s.fetch_allowed else 'no' }}</td>
+    <td>{{ 'yes' if s.enabled else 'no' }}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

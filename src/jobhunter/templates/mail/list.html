@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Mail{% endblock %}
+{% block content %}
+<h1>Mail</h1>
+{% if not mailbox %}
+<p class="warn">No job mailbox yet. <a href="/settings/mailbox">Set it up in Settings</a>.</p>
+{% else %}
+<p class="muted">{{ mailbox.address }} · last check {{ mailbox.last_check_at|local_dt if mailbox.last_check_at else 'never' }}
+  {% if mailbox.last_result and not mailbox.last_error %}· {{ mailbox.last_result }}{% endif %}
+  {% include "mail/_check_form.html" %}</p>
+{% if mailbox.last_error %}<p class="error">Last check failed: {{ mailbox.last_error }}</p>{% endif %}
+{% endif %}
+<form method="get" action="/mail" class="row card">
+  <label>Show
+    <select name="view" onchange="this.form.submit()">
+      {% for v, label in [('all','All'),('linked','Linked to a job'),('unlinked','Not linked'),('alerts','Job alerts'),('sent','Sent')] %}
+      <option value="{{ v }}"{% if view == v %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select></label>
+  <label>Search <input type="search" name="q" value="{{ q }}" placeholder="sender, subject or text"></label>
+  <div><button type="submit" class="btn btn-small">Apply</button></div>
+</form>
+<p class="muted">{{ total }} email{{ '' if total == 1 else 's' }}</p>
+{% if emails %}
+<div class="table-wrap"><table>
+  <thead><tr><th>Date</th><th>From / to</th><th>Subject</th><th>Job</th></tr></thead>
+  <tbody>
+  {% for e in emails %}
+  <tr>
+    <td class="muted">{{ (e.sent_at or e.saved_at)|local_dt }}</td>
+    <td>{% if e.direction == 'out' %}→ {{ e.to_addrs|join(', ') }}{% if e.send_status == 'failed' %} <span class="badge">failed</span>{% endif %}{% else %}{{ e.from_name or e.from_addr }}{% endif %}</td>
+    <td class="mail-subject"><a href="/mail/{{ e.id }}">{{ e.subject or '(no subject)' }}</a>{% if e.kind == 'alert' %} <span class="badge">alert</span>{% endif %}</td>
+    <td>{% if e.job_id and jobs.get(e.job_id) %}<a href="/jobs/{{ e.job_id }}">{{ jobs[e.job_id].company }}</a>{% elif e.candidates %}<span class="badge">needs a decision</span>{% endif %}</td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% if pages > 1 %}<p class="pager">{% if page > 1 %}<a href="/mail?view={{ view }}&q={{ q|urlencode }}&page={{ page - 1 }}">← Previous</a>{% endif %} Page {{ page }} of {{ pages }} {% if page < pages %}<a href="/mail?view={{ view }}&q={{ q|urlencode }}&page={{ page + 1 }}">Next →</a>{% endif %}</p>{% endif %}
+{% else %}<p class="card muted">No emails here yet.</p>{% endif %}
+{% endblock %}

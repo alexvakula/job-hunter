@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}My resume{% endblock %}
+{% block content %}
+<h1>My resume</h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+<form method="post" action="/settings/resume" enctype="multipart/form-data" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <label>Upload your current resume (Word .docx or PDF, up to 10 MB)
+    <input type="file" name="file" accept=".docx,.pdf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required>
+  </label>
+  <button type="submit" class="btn">Upload</button>
+  <p class="muted">The newest upload becomes your current resume. Earlier versions are kept. Only you can see or download your files.</p>
+</form>
+
+{% if resumes %}
+<div class="table-wrap">
+<table>
+  <thead><tr><th>File</th><th>Type</th><th>Size</th><th>Uploaded</th><th></th></tr></thead>
+  <tbody>
+  {% for r in resumes %}
+    <tr>
+      <td><a href="/settings/resume/{{ r.id }}/download">{{ r.original_name }}</a>
+        {% if r.is_current %} <span class="badge">current</span>{% endif %}</td>
+      <td>{{ r.format|upper }}</td>
+      <td>{{ (r.size_bytes / 1024)|round(0)|int }} KB</td>
+      <td>{{ r.uploaded_at|local_dt }}</td>
+      <td>
+        {% if not r.is_current %}
+        <form method="post" action="/settings/resume/{{ r.id }}/current" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="link">Make current</button>
+        </form> ·{% endif %}
+        <form method="post" action="/settings/resume/{{ r.id }}/delete" class="inline">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label class="check inline-check"><input type="checkbox" name="confirm" value="yes"> Yes, delete</label>
+          <button type="submit" class="link">Delete</button>
+        </form>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<p class="card muted">No resume uploaded yet.</p>
+{% endif %}
+{% endblock %}

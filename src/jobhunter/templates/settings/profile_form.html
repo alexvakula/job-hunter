@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ profile.name if profile else 'New target position' }}{% endblock %}
+{% block content %}
+<h1>{{ 'Edit ' ~ profile.name if profile else 'New target position' }}</h1>
+{% if errors %}<p class="error" role="alert">Please fix the highlighted fields.</p>{% endif %}
+{% if delete_error %}<p class="error">Tick "Yes, delete" to confirm.</p>{% endif %}
+<form method="post" action="{{ '/settings/profiles/' ~ profile.id if profile else '/settings/profiles/new' }}" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="row">
+    <label>Job title *
+      <input name="name" value="{{ data.name }}" required placeholder="e.g. QA Lead">
+      {% if errors.name %}<span class="field-error">{{ errors.name }}</span>{% endif %}
+    </label>
+    <label>Seniority <input name="seniority" value="{{ data.seniority }}" placeholder="e.g. Lead, Senior"></label>
+  </div>
+  <label>Other titles for the same role (comma-separated)
+    <input name="synonyms" value="{{ data.synonyms }}" placeholder="Test Manager, QA Manager"></label>
+  <div class="row">
+    <label>Keywords it should mention <input name="include_keywords" value="{{ data.include_keywords }}" placeholder="selenium, automation"></label>
+    <label>Skip jobs that mention <input name="exclude_keywords" value="{{ data.exclude_keywords }}" placeholder="junior, intern"></label>
+  </div>
+
+  <h2>Places</h2>
+  <p class="muted">One row per place. Leave extra rows empty. The salary floor is per year, in that place's currency.</p>
+  {% if errors.rules %}<p class="field-error">{{ errors.rules }}</p>{% endif %}
+  <div id="rules">
+  {% for row in rows %}{% set i = loop.index0 %}
+    <fieldset class="rule row">
+      <label>Place <input name="rules-{{ i }}-place" value="{{ row.place }}" placeholder="Calgary, AB / USA">
+        {% if errors['rules-%d-place'|format(i)] %}<span class="field-error">{{ errors['rules-%d-place'|format(i)] }}</span>{% endif %}</label>
+      <div class="modes"><span class="label">Work modes</span>
+        {% for value, label in rule_modes %}
+        <label class="check"><input type="checkbox" name="rules-{{ i }}-{{ value }}" value="1"{% if value in row.work_modes %} checked{% endif %}> {{ label }}</label>
+        {% endfor %}
+        {% if errors['rules-%d-modes'|format(i)] %}<span class="field-error">Pick at least one work mode.</span>{% endif %}
+      </div>
+      <label>Salary floor / year <input name="rules-{{ i }}-floor" inputmode="numeric" value="{{ row.floor }}" placeholder="130000">
+        {% if errors['rules-%d-floor'|format(i)] %}<span class="field-error">{{ errors['rules-%d-floor'|format(i)] }}</span>{% endif %}</label>
+      <label>Currency
+        <select name="rules-{{ i }}-currency"><option value=""></option>
+          {% for c in ['CAD', 'USD'] %}<option{% if row.currency == c %} selected{% endif %}>{{ c }}</option>{% endfor %}
+        </select>
+        {% if errors['rules-%d-currency'|format(i)] %}<span class="field-error">{{ errors['rules-%d-currency'|format(i)] }}</span>{% endif %}</label>
+    </fieldset>
+  {% endfor %}
+  </div>
+  <button type="button" class="btn btn-secondary btn-small" id="add-rule">+ Another place</button>
+
+  <h2>Sources to search</h2>
+  {% if errors.source_ids %}<p class="field-error">{{ errors.source_ids }}</p>{% endif %}
+  <div class="source-picks">
+    {% for s in sources %}
+    <label class="check"><input type="checkbox" name="source_ids" value="{{ s.id }}"{% if s.id|string in data.source_ids %} checked{% endif %}> {{ s.name }}{% if not s.enabled %} <span class="muted">(disabled)</span>{% endif %}</label>
+    {% endfor %}
+  </div>
+
+  <p><button type="submit" class="btn">Save</button> <a href="/settings/profiles" class="btn btn-secondary">Cancel</a></p>
+</form>
+
+{% if profile %}
+<section class="card">
+  <h2>Delete</h2>
+  <p class="muted">Jobs tagged with this target position keep existing, untagged. To keep the tag, archive it instead.</p>
+  <form method="post" action="/settings/profiles/{{ profile.id }}/delete">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label class="check"><input type="checkbox" name="confirm" value="yes"> Yes, delete "{{ profile.name }}"</label>
+    <button type="submit" class="btn btn-danger btn-small">Delete</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

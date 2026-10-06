@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Job sources{% endblock %}
+{% block content %}
+<h1>Job sources</h1>
+<p class="muted">How jobs reach Job Hunter from each service. No passwords for these sites are ever needed or stored: alerts arrive by email in your job mailbox.</p>
+{% if request.query_params.get('started') %}<p class="flash">Import started: checking your job mailbox and running the searches. Reload this page in a minute to see the results.</p>{% endif %}
+{% if running or request.query_params.get('running') %}<p class="warn">A search is running…</p>{% endif %}
+<section class="card">
+  {% if mailbox %}
+  <p>Job mailbox: <strong>{{ mailbox.address }}</strong> · last check {{ mailbox.last_check_at|local_dt if mailbox.last_check_at else 'never' }}
+    {% if mailbox.last_error %}<span class="error">{{ mailbox.last_error }}</span>{% endif %}</p>
+  <form method="post" action="/sources/import">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn">Import from all</button>
+    <span class="muted">Checks your job mailbox and runs the automatic searches now (they also run every morning at 6:00).</span>
+  </form>
+  {% else %}<p class="warn">Set up your <a href="/settings/mailbox">job mailbox</a> to receive job alerts.</p>
+  <form method="post" action="/sources/import"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn">Run searches now</button></form>{% endif %}
+</section>
+{% if claude_enabled %}<form method="post" action="/claude/find"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn btn-secondary">Find jobs with Claude</button> <span class="muted">Claude searches the web for your target positions (a few minutes).</span></form>{% endif %}
+{% if runs %}<h2>Recent searches</h2>{% for run in runs[:3] %}{% include "sources/_run.html" %}{% endfor %}{% endif %}
+<div class="cards">
+{% for c in cards %}
+  <section class="card source-card">
+    <h2>{{ c.source.name }}</h2>
+    <p><span class="badge">{{ c.method }}</span></p>
+    <p>{{ c.steps }}</p>
+    {% if c.url %}<p><a href="{{ c.url }}" rel="noopener noreferrer" target="_blank">Open {{ c.source.name }} ↗</a></p>{% endif %}
+    {% if c.needs_mailbox %}<p class="warn"><a href="/settings/mailbox">Set up your job mailbox</a> to use alerts.</p>{% endif %}
+    <p class="muted">{% if c.source.alert_sender %}{{ c.alerts }} alert{{ '' if c.alerts == 1 else 's' }} · {{ c.suggested }} suggested · {{ c.added }} added · {% endif %}{{ c.jobs }} job{{ '' if c.jobs == 1 else 's' }} tracked
+      {% if c.last_alert %}· last alert {{ c.last_alert|local_dt }}{% endif %}</p>
+  </section>
+{% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Application{% endblock %}
+{% block content %}
+<h1>{{ 'Application sent' if ok else 'Not sent' }}</h1>
+<p class="{{ 'flash' if ok else 'error' }}">{{ message }}</p>
+<p><a href="/jobs/{{ job.id }}" class="btn">Back to the job</a> <a href="/mail?view=sent" class="btn btn-secondary">Sent emails</a></p>
+{% endblock %}

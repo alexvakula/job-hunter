@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ job.title }}{% endblock %}
+{% block content %}
+<h1>{{ job.title }} <span class="muted">at {{ job.company }}</span></h1>
+{% if delete_error %}<p class="error">Tick "Yes, delete" to confirm.</p>{% endif %}
+<section class="card">
+  <div class="row">
+    <div><strong>Location</strong><br>{{ job.location or '—' }}</div>
+    <div><strong>Work mode</strong><br>{{ work_modes[job.work_mode] }}</div>
+    <div><strong>Salary</strong><br>
+      {% if job.salary_min is not none %}{{ job.salary_currency }} {{ "{:,}".format(job.salary_min) }}{% if job.salary_max != job.salary_min %}–{{ "{:,}".format(job.salary_max) }}{% endif %} per {{ job.salary_period }}{% elif job.salary_text %}{{ job.salary_text }}{% else %}—{% endif %}
+    </div>
+    <div><strong>Source</strong><br>{{ source.name }}</div>
+    <div><strong>Found</strong><br>{{ job.date_found }}</div>
+    <div><strong>Target position</strong><br>{{ profile.name if profile else '—' }}</div>
+  </div>
+  {% if job.url %}<p><a href="{{ job.url }}" rel="noopener noreferrer" target="_blank">Open the posting ↗</a></p>{% endif %}
+  <p><a href="/jobs/{{ job.id }}/apply" class="btn btn-small">Apply: tailor resume, cover letter, email</a>
+     <a href="/jobs/{{ job.id }}/edit" class="btn btn-secondary btn-small">Edit details</a></p>
+</section>
+
+{% include "jobs/_timeline.html" with context %}
+
+{% include "jobs/_emails.html" with context %}
+{% include "jobs/_followups.html" with context %}
+{% include "jobs/_notes.html" with context %}
+{% include "jobs/_contacts.html" with context %}
+
+<section class="card">
+  <h2>Description</h2>
+  {% if job.description %}<div class="description">{{ job.description }}</div>{% else %}<p class="muted">No description saved.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Delete</h2>
+  <form method="post" action="/jobs/{{ job.id }}/delete">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label><input type="checkbox" name="confirm" value="yes" style="display:inline;width:auto"> Yes, delete this job and its history</label>
+    <button type="submit" class="btn btn-danger btn-small">Delete job</button>
+  </form>
+</section>
+{% endblock %}

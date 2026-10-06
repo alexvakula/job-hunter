@@ -1,0 +1,5 @@
+<input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+<input type="hidden" name="to" value="{{ compose.to|join(', ') }}">
+<input type="hidden" name="subject" value="{{ compose.subject }}">
+<input type="hidden" name="body" value="{{ compose.body }}">
+{% for a in compose.attachments %}<input type="hidden" name="attachments" value="{{ a }}">{% endfor %}

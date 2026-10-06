@@ -1,0 +1,6 @@
+QA Lead
+Company: Acme Robotics Inc.
+Location: Calgary, AB (Hybrid)
+Salary: $130,000 - $150,000 per year
+
+We are looking for a QA Lead to own test strategy.

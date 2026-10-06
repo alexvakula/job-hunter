@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Mailbox check{% endblock %}
+{% block content %}
+<h1>Mailbox check</h1>
+<p class="{{ 'flash' if result.ok else 'error' }}" role="status">{{ result.message }}</p>
+<p><a href="{{ back }}" class="btn btn-secondary">Back</a>
+  {% if result.suggestions %}<a href="/suggestions" class="btn">See suggested jobs</a>{% endif %}
+  <a href="/mail" class="btn btn-secondary">Mail</a></p>
+{% endblock %}

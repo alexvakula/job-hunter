@@ -1,0 +1,29 @@
+# Secrets (constitution Principle IV) - never commit
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+
+# Runtime data: SQLite DB, generated documents, backups
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store

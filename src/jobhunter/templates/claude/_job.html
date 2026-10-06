@@ -1,0 +1,12 @@
+<div id="claude-job" class="card"{% if job.status in ('queued', 'running') %} hx-get="/claude/jobs/{{ job.id }}" hx-trigger="every 3s" hx-swap="outerHTML"{% endif %}>
+  <p><strong>{{ labels[job.kind] }}</strong> · <span class="badge">{{ job.status }}</span>
+    <span class="muted">queued {{ job.created_at|local_dt }}{% if job.finished_at %} · finished {{ job.finished_at|local_dt }}{% endif %}{% if job.cost_usd %} · reported cost ${{ '%.3f'|format(job.cost_usd) }}{% endif %}</span></p>
+  {% if job.status in ('queued', 'running') %}<p class="muted">Working… this page updates by itself. {% if job.kind == 'find_jobs' %}Web searches can take a few minutes.{% endif %}</p>{% endif %}
+  {% if job.error %}<p class="error">{{ job.error }}</p>{% endif %}
+  {% if job.summary %}<p class="flash">{{ job.summary }}</p>{% endif %}
+  {% if job.status == 'done' %}
+    {% if job.kind in ('find_jobs', 'fit_rank') %}<p><a href="/suggestions" class="btn">See suggestions</a></p>
+    {% elif job.kind == 'tailor' %}<p><a href="/jobs/{{ job.result.job_id }}/apply#tailor" class="btn">Review the tailored resume</a></p>
+    {% elif job.kind == 'import' %}<p><a href="/resume/claude-import/{{ job.id }}" class="btn">Review in the editor</a></p>{% endif %}
+  {% endif %}
+</div>

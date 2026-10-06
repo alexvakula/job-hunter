@@ -1,0 +1,40 @@
+{% set errs = contacts_errors or {} %}{% set cf = contacts_form or {} %}
+<section id="contacts" class="card">
+  <h2>Contacts</h2>
+  {% for c in contacts %}
+  <details class="contact">
+    <summary><strong>{{ c.name }}</strong>{% if c.role %} — {{ c.role }}{% endif %}
+      {% if c.email %} · <a href="mailto:{{ c.email }}">{{ c.email }}</a>{% endif %}
+      {% if c.phone %} · {{ c.phone }}{% endif %}
+      {% if c.profile_url %} · <a href="{{ c.profile_url }}" rel="noopener noreferrer" target="_blank">profile ↗</a>{% endif %}
+    </summary>
+    {% if c.notes %}<p class="description">{{ c.notes }}</p>{% endif %}
+    <form method="post" action="/jobs/{{ job.id }}/contacts/{{ c.id }}" hx-post="/jobs/{{ job.id }}/contacts/{{ c.id }}" hx-target="#contacts" hx-swap="outerHTML" class="row">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label>Name <input name="name" value="{{ c.name }}" required></label>
+      <label>Role <input name="role" value="{{ c.role or '' }}"></label>
+      <label>Email <input name="email" type="email" value="{{ c.email or '' }}"></label>
+      <label>Phone <input name="phone" value="{{ c.phone or '' }}"></label>
+      <label>Profile link <input name="profile_url" type="url" value="{{ c.profile_url or '' }}"></label>
+      <label>Notes <input name="notes" value="{{ c.notes or '' }}"></label>
+      <div><button type="submit" class="btn btn-small">Save</button></div>
+    </form>
+    <form method="post" action="/jobs/{{ job.id }}/contacts/{{ c.id }}/delete" hx-post="/jobs/{{ job.id }}/contacts/{{ c.id }}/delete" hx-target="#contacts" hx-swap="outerHTML" hx-confirm="Delete this contact?">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <button type="submit" class="link">Delete contact</button>
+    </form>
+  </details>
+  {% endfor %}
+  <form method="post" action="/jobs/{{ job.id }}/contacts" hx-post="/jobs/{{ job.id }}/contacts" hx-target="#contacts" hx-swap="outerHTML">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <div class="row">
+      <label>Name * <input name="name" value="{{ cf.get('name', '') }}">{% if errs.name %}<span class="field-error">{{ errs.name }}</span>{% endif %}</label>
+      <label>Role <input name="role" value="{{ cf.get('role', '') }}" placeholder="Recruiter, hiring manager…"></label>
+      <label>Email <input name="email" type="email" value="{{ cf.get('email', '') }}">{% if errs.email %}<span class="field-error">{{ errs.email }}</span>{% endif %}</label>
+      <label>Phone <input name="phone" value="{{ cf.get('phone', '') }}"></label>
+      <label>Profile link <input name="profile_url" type="url" value="{{ cf.get('profile_url', '') }}">{% if errs.profile_url %}<span class="field-error">{{ errs.profile_url }}</span>{% endif %}</label>
+      <label>Notes <input name="notes" value="{{ cf.get('notes', '') }}"></label>
+    </div>
+    <button type="submit" class="btn btn-small">Add contact</button>
+  </form>
+</section>

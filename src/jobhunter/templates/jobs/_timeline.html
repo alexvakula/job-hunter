@@ -1,0 +1,27 @@
+<section id="status-section" class="card">
+  <h2>Status: <span class="badge">{{ status_labels[job.status] }}</span></h2>
+  {% if status_error %}<p class="error">{{ status_error }}</p>{% endif %}
+  <form method="post" action="/jobs/{{ job.id }}/status" hx-post="/jobs/{{ job.id }}/status" hx-target="#status-section" hx-swap="outerHTML" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Change to
+      <select name="status">
+        {% for s in active_statuses + closed_statuses %}
+        <option value="{{ s }}"{% if s == job.status %} selected{% endif %}>{{ status_labels[s] }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>When (leave empty for now)
+      <input type="datetime-local" name="effective_at">
+    </label>
+    <div><button type="submit" class="btn">Update status</button></div>
+  </form>
+  <h2>History</h2>
+  <ol class="timeline">
+    {% for h in timeline %}
+    <li>{{ h.effective_at|local_dt }} —
+      {% if h.from_status %}{{ status_labels[h.from_status] }} → {% else %}Added as {% endif %}<strong>{{ status_labels[h.to_status] }}</strong>
+      {% if (h.recorded_at - h.effective_at).total_seconds()|abs > 300 %}<span class="muted">(recorded {{ h.recorded_at|local_dt }})</span>{% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+</section>

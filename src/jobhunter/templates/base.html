@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Job Hunter{% endblock %} · Job Hunter</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/vendor/htmx.min.js" defer></script>
+  {% block head %}{% endblock %}
+  <script src="/static/app.js" defer></script>
+</head>
+<body{% if csrf_token %} hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'{% endif %}>
+  {% if current_user %}
+  <header class="topbar">
+    <a class="brand" href="/">Job Hunter</a>
+    <nav>
+      <a href="/jobs">Jobs</a>
+      <a href="/board">Board</a>
+      <a href="/mail">Mail</a>
+      <a href="/suggestions">Suggestions</a>
+      <a href="/sources">Sources</a>
+      <a href="/watchlist">Watchlist</a>
+      <a href="/settings">Settings</a>
+      {% if current_user.is_admin %}<a href="/admin/users">Admin</a> <a href="/claude">Claude</a>{% endif %}
+      <a href="/jobs/new" class="btn btn-small">+ Add job</a>
+    </nav>
+    <div class="who">
+      <a href="/account/password" title="Change password">{{ current_user.display_name }}</a>
+      <form method="post" action="/logout" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="link">Log out</button>
+      </form>
+    </div>
+  </header>
+  {% endif %}
+  <main class="container">
+    {% if flash %}<p class="flash" role="status">{{ flash }}</p>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

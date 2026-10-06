@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Board{% endblock %}
+{% block head %}<script src="/static/vendor/Sortable.min.js" defer></script>{% endblock %}
+{% block content %}
+<h1>Board</h1>
+<p class="muted">Drag a card to another column to change its status.
+  {% if show_closed %}<a href="/board">Hide closed</a>{% else %}<a href="/board?closed=1">Show rejected, withdrawn and ghosted</a>{% endif %}</p>
+<p class="error" id="board-error" hidden>Couldn't move the card. Reload the page and try again.</p>
+<div class="board">
+  {% for status, jobs in columns %}
+  <section class="column{% if status in closed_values %} closed{% endif %}">
+    <h2>{{ status_labels[status] }} <span class="muted">{{ jobs|length }}</span></h2>
+    <ul class="kanban-list" data-status="{{ status }}">
+      {% for job in jobs %}{% include "board/_card.html" with context %}{% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

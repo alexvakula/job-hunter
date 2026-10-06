@@ -1,0 +1,54 @@
+{
+ "absolute_url": "https://job-boards.greenhouse.io/gitlab/jobs/8860302002",
+ "data_compliance": [
+  {
+   "type": "gdpr",
+   "requires_consent": false,
+   "requires_processing_consent": false,
+   "requires_retention_consent": false,
+   "retention_period": null,
+   "demographic_data_consent_applies": false
+  }
+ ],
+ "internal_job_id": 6547054002,
+ "location": {
+  "name": "Calgary, Alberta, Canada"
+ },
+ "metadata": [
+  {
+   "id": 4595831002,
+   "name": "Quota Coverage Type",
+   "value": "Account Executive",
+   "value_type": "single_select"
+  }
+ ],
+ "id": 101,
+ "updated_at": "2026-10-02T11:31:50-04:00",
+ "requisition_id": "7109",
+ "title": "QA Lead",
+ "company_name": "GitLab",
+ "first_published": "2026-10-02T11:31:50-04:00",
+ "language": "en",
+ "application_deadline": null,
+ "content": "&lt;p&gt;Own &lt;b&gt;quality&lt;/b&gt; for our platform.&lt;/p&gt;",
+ "departments": [
+  {
+   "id": 4096748002,
+   "name": "EMEA - Commercial",
+   "child_ids": [],
+   "parent_id": 4096735002
+  }
+ ],
+ "offices": [
+  {
+   "id": 4042500002,
+   "name": "France",
+   "location": "France",
+   "child_ids": [],
+   "parent_id": 4019553002
+  }
+ ],
+ "ai_disclaimer": null,
+ "include_ai_disclaimer": null,
+ "ai_opt_out_request_url": null
+}

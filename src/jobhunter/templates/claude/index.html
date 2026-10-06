@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Claude{% endblock %}
+{% block content %}
+<h1>Claude</h1>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}
+<section class="card">
+  <p>Token: <span class="badge">{{ 'configured' if token else 'not configured' }}</span> ·
+     CLI: <span class="badge">{{ 'installed' if installed else 'missing' }}</span></p>
+  {% if not token %}<p class="warn">On your computer run <code>claude setup-token</code>, then add <code>CLAUDE_CODE_OAUTH_TOKEN=…</code> to <code>/opt/docker/job-hunter/.env</code> and run <code>docker compose up -d</code>. The token is never shown here.</p>{% endif %}
+  <p class="muted">Claude runs one job at a time in the background, may only search and read the web for “Find jobs” (never LinkedIn, Indeed or Glassdoor pages), and uses only your master resume as facts. Only you (admin) can use it.</p>
+  <form method="post" action="/claude/find" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn"{% if not token %} disabled{% endif %}>Find jobs with Claude</button></form>
+  <form method="post" action="/claude/rank" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn btn-secondary"{% if not token %} disabled{% endif %}>Rank new suggestions</button></form>
+</section>
+<h2>Recent jobs</h2>
+{% if jobs %}
+<div class="table-wrap"><table>
+  <thead><tr><th>Kind</th><th>Status</th><th>Queued</th><th>Result</th></tr></thead>
+  <tbody>{% for j in jobs %}
+  <tr><td><a href="/claude/jobs/{{ j.id }}">{{ labels[j.kind] }}</a></td><td><span class="badge">{{ j.status }}</span></td>
+      <td class="muted">{{ j.created_at|local_dt }}</td><td>{{ j.error or j.summary or '' }}</td></tr>
+  {% endfor %}</tbody>
+</table></div>
+{% else %}<p class="card muted">No Claude jobs yet.</p>{% endif %}
+{% endblock %}

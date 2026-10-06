@@ -1,0 +1,123 @@
+{
+ "pages/jobbank.html": {
+  "title": "Quality assurance lead",
+  "company": "Prairie Software Ltd.",
+  "location": "Calgary, AB",
+  "work_mode": "unknown",
+  "salary_min": 55,
+  "salary_max": 65,
+  "salary_currency": "CAD",
+  "salary_period": "hour",
+  "description_contains": "Mentor testers"
+ },
+ "pages/greenhouse.html": {
+  "title": "Senior QA Manager",
+  "company": "Northwind Analytics",
+  "location": "Vancouver, British Columbia",
+  "work_mode": "hybrid",
+  "salary_min": 140000,
+  "salary_max": 165000,
+  "salary_currency": "CAD",
+  "salary_period": "year",
+  "description_contains": "Own quality"
+ },
+ "pages/lever.html": {
+  "title": "Test Lead",
+  "company": "Lumen Health",
+  "location": "USA",
+  "work_mode": "remote",
+  "salary_min": 150000,
+  "salary_max": 150000,
+  "salary_currency": "USD",
+  "salary_period": "year",
+  "description_contains": "test automation"
+ },
+ "pages/ashby.html": {
+  "title": "QA Lead",
+  "company": "Orbit Labs",
+  "location": "Calgary, AB",
+  "work_mode": "onsite",
+  "salary_min": null,
+  "salary_max": null,
+  "salary_currency": null,
+  "salary_period": null,
+  "description_contains": "On-site in Calgary."
+ },
+ "pages/workday.html": {
+  "title": "Manager, Software Quality Assurance",
+  "company": "Big Energy Corp",
+  "location": "Calgary, Alberta",
+  "work_mode": "hybrid",
+  "salary_min": null,
+  "salary_max": null,
+  "salary_currency": null,
+  "salary_period": null,
+  "description_contains": "QA function"
+ },
+ "pages/opengraph_only.html": {
+  "title": "QA Analyst",
+  "company": "Smallco",
+  "location": null,
+  "work_mode": "unknown",
+  "salary_min": null,
+  "salary_max": null,
+  "salary_currency": null,
+  "salary_period": null,
+  "description_contains": "Vancouver"
+ },
+ "texts/range_dollars.txt": {
+  "title": "QA Lead",
+  "company": "Acme Robotics Inc.",
+  "location": "Calgary, AB",
+  "work_mode": "hybrid",
+  "salary_min": 130000,
+  "salary_max": 150000,
+  "salary_currency": null,
+  "salary_period": "year",
+  "description_contains": "test strategy"
+ },
+ "texts/cad_k.txt": {
+  "title": "Test Manager",
+  "company": "Glacier Bank",
+  "location": "Vancouver, BC",
+  "work_mode": "remote",
+  "salary_min": 130000,
+  "salary_max": 130000,
+  "salary_currency": "CAD",
+  "salary_period": "year",
+  "description_contains": "6 testers"
+ },
+ "texts/usd_hourly.txt": {
+  "title": "Senior QA Engineer",
+  "company": "Redwood Systems",
+  "location": null,
+  "work_mode": "remote",
+  "salary_min": 65,
+  "salary_max": 65,
+  "salary_currency": "USD",
+  "salary_period": "hour",
+  "description_contains": "Contract"
+ },
+ "texts/k_range.txt": {
+  "title": "QA Manager",
+  "company": "Maple Leaf Foods",
+  "location": "Toronto, ON",
+  "work_mode": "onsite",
+  "salary_min": 120000,
+  "salary_max": 140000,
+  "salary_currency": null,
+  "salary_period": "year",
+  "description_contains": "QA Manager"
+ },
+ "texts/no_salary.txt": {
+  "title": "Quality Lead",
+  "company": null,
+  "location": null,
+  "work_mode": "unknown",
+  "salary_min": null,
+  "salary_max": null,
+  "salary_currency": null,
+  "salary_period": null,
+  "description_contains": "Apply now"
+ }
+}

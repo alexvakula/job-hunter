@@ -1,0 +1,26 @@
+{% set errs = followups_errors or {} %}{% set ff = followups_form or {} %}
+<section id="followups" class="card">
+  <h2>Follow-ups</h2>
+  <ul class="timeline">
+  {% for fu in followups %}
+    <li{% if fu.done %} class="muted"{% endif %}>
+      <strong>{{ fu.due_date }}</strong> {{ fu.description }}
+      {% if fu.done %}✓ done{% else %}
+      <form method="post" action="/jobs/{{ job.id }}/followups/{{ fu.id }}/done" hx-post="/jobs/{{ job.id }}/followups/{{ fu.id }}/done" hx-target="#followups" hx-swap="outerHTML" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="link">Mark done</button>
+      </form>{% endif %}
+      <form method="post" action="/jobs/{{ job.id }}/followups/{{ fu.id }}/delete" hx-post="/jobs/{{ job.id }}/followups/{{ fu.id }}/delete" hx-target="#followups" hx-swap="outerHTML" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}"> · <button type="submit" class="link">Delete</button>
+      </form>
+    </li>
+  {% else %}
+    <li class="muted">No follow-ups yet.</li>
+  {% endfor %}
+  </ul>
+  <form method="post" action="/jobs/{{ job.id }}/followups" hx-post="/jobs/{{ job.id }}/followups" hx-target="#followups" hx-swap="outerHTML" class="row">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Due <input type="date" name="due_date" value="{{ ff.get('due_date', '') }}" required>{% if errs.due_date %}<span class="field-error">{{ errs.due_date }}</span>{% endif %}</label>
+    <label>What to do <input name="description" maxlength="200" value="{{ ff.get('description', '') }}" placeholder="e.g. email the recruiter">{% if errs.description %}<span class="field-error">{{ errs.description }}</span>{% endif %}</label>
+    <div><button type="submit" class="btn btn-small">Add follow-up</button></div>
+  </form>
+</section>

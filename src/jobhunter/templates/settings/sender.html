@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Sender email{% endblock %}
+{% block content %}
+<h1>Sender email</h1>
+{% set e = errors or {} %}
+{% if request.query_params.get('saved') %}<p class="flash">Saved.</p>{% endif %}
+{% if e %}<p class="error" role="alert">Please fix the highlighted fields.</p>{% endif %}
+<p class="muted">Application emails (coming in a later version) will be sent from this address, and only after you preview and confirm each one.</p>
+<form method="post" action="/settings/sender" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <div class="row">
+    <label>From address <input name="from_address" type="email" value="{{ s.from_address }}" placeholder="you@example.org">
+      {% if e.from_address %}<span class="field-error">{{ e.from_address }}</span>{% endif %}</label>
+    <label>Display name <input name="display_name" value="{{ s.display_name }}" placeholder="Your full name">
+      {% if e.display_name %}<span class="field-error">{{ e.display_name }}</span>{% endif %}</label>
+    <label>Reply-to (optional) <input name="reply_to" type="email" value="{{ s.reply_to }}">
+      {% if e.reply_to %}<span class="field-error">{{ e.reply_to }}</span>{% endif %}</label>
+  </div>
+  <div class="row">
+    <label>Mail server <input name="smtp_host" value="{{ s.smtp_host }}">
+      {% if e.smtp_host %}<span class="field-error">{{ e.smtp_host }}</span>{% endif %}</label>
+    <label>Port <input name="smtp_port" inputmode="numeric" value="{{ s.smtp_port }}">
+      {% if e.smtp_port %}<span class="field-error">{{ e.smtp_port }}</span>{% endif %}</label>
+    <label>Mail username <input name="smtp_username" value="{{ s.smtp_username }}" placeholder="usually your full address">
+      {% if e.smtp_username %}<span class="field-error">{{ e.smtp_username }}</span>{% endif %}</label>
+  </div>
+  <p><strong>Mail password:</strong>
+    {% if password_configured %}<span class="badge">password: configured</span>
+    {% else %}<span class="badge">password: not configured</span>{% endif %}
+    <span class="muted">Passwords are never entered or shown here. The admin sets <code>{{ password_env }}</code> in the server's .env file.</span></p>
+  <label>Signature (optional) <textarea name="signature" rows="4">{{ s.signature }}</textarea>
+    {% if e.signature %}<span class="field-error">{{ e.signature }}</span>{% endif %}</label>
+  <label class="check"><input type="checkbox" name="bcc_self" value="1"{% if s.bcc_self %} checked{% endif %}> Send me a copy (BCC) of every email</label>
+  <p><button type="submit" class="btn">Save</button></p>
+</form>
+
+<section class="card">
+  <h2>Send a test email</h2>
+  <p class="muted">Sends a short message to your own from-address using the saved settings.</p>
+  <form method="post" action="/settings/sender/test" hx-post="/settings/sender/test" hx-target="#test-result" hx-swap="outerHTML" hx-disabled-elt="find button">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn btn-secondary">Send test email</button>
+  </form>
+  {% if result %}{% include "settings/_test_result.html" %}{% else %}<p id="test-result"></p>{% endif %}
+</section>
+{% endblock %}

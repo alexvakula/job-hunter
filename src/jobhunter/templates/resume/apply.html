@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Apply: {{ job.title }}{% endblock %}
+{% block content %}
+<p><a href="/jobs/{{ job.id }}">← {{ job.title }} at {{ job.company }}</a></p>
+<h1>Apply: {{ job.title }} <span class="muted">at {{ job.company }}</span></h1>
+{% if request.query_params.get('saved') %}<p class="flash">Saved.</p>{% endif %}
+{% if request.query_params.get('generated') %}<p class="flash">Version {{ request.query_params.get('generated') }} created.</p>{% endif %}
+{% if stale %}<p class="warn">Your master resume changed after this tailored version was made. <a href="#reset">Start again from the master</a> to pick up the changes.</p>{% endif %}
+
+<section class="card" id="score">
+  <h2>ATS match</h2>
+  {% if not keywords %}<p class="muted">Add the posting text to this job to see which keywords it asks for.</p>
+  {% else %}
+  <p><strong>Master resume: {{ master_cov.percent }}%</strong> · <strong>Tailored: {{ tailored_cov.percent }}%</strong> of {{ keywords|length }} keywords</p>
+  <p><span class="muted">In your resume:</span> {% for k in tailored_cov.matched %}<span class="badge">{{ k }}</span> {% endfor %}</p>
+  <p><span class="muted">Not in your resume:</span> {% for k in tailored_cov.missing %}<span class="badge">{{ k }}</span> {% endfor %}</p>
+  <p class="muted small">Only add a missing keyword to your master resume if it is true for you.</p>
+  {% endif %}
+</section>
+
+{% if flags %}
+<section class="card error" id="flags">
+  <strong>Not in your master resume:</strong> {{ flags|join(', ') }}.
+  Remove {{ 'it' if flags|length == 1 else 'them' }} from the tailored text or cover letter, or add {{ 'it' if flags|length == 1 else 'them' }} to your <a href="/resume">master resume</a> if true. Documents can't be generated until then.
+</section>
+{% endif %}
+
+<form method="post" action="/jobs/{{ job.id }}/apply/tailor" class="card" id="tailor">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <h2>Tailored resume</h2>
+  <p class="muted">Bullets and skills are ordered by relevance to this job. Edit wording, hide what doesn't help, or change the order numbers. Employers, titles and dates come from your master resume.</p>
+  <label>Summary <textarea name="summary" rows="4">{{ t.summary }}</textarea></label>
+  {% for exp in t.experience %}{% set f = facts.get(exp.id) %}{% if f %}
+  <fieldset class="rule">
+    <p><strong>{{ f.title }} — {{ f.employer }}</strong> <span class="muted">{{ f.location }} · {{ f.start }} – {{ f.end }}</span></p>
+    {% for b in exp.bullets %}{% set key = 'b-%s-%d'|format(exp.id, b.source_index) %}
+    <div class="bullet-row">
+      <input class="pos" name="{{ key }}-pos" value="{{ loop.index }}" inputmode="numeric" aria-label="Order">
+      <textarea name="{{ key }}-text" rows="2">{{ b.text }}</textarea>
+      <label class="check"><input type="checkbox" name="{{ key }}-hidden" value="1"{% if b.hidden %} checked{% endif %}> hide</label>
+    </div>
+    {% endfor %}
+  </fieldset>{% endif %}{% endfor %}
+  <h3>Skills</h3>
+  <div class="skill-grid">
+  {% for s in t.skills %}
+    <span class="skill"><input class="pos" name="s-{{ loop.index0 }}-pos" value="{{ loop.index }}" inputmode="numeric" aria-label="Order"> {{ s.name }}
+      <label class="check"><input type="checkbox" name="s-{{ loop.index0 }}-hidden" value="1"{% if s.hidden %} checked{% endif %}> hide</label></span>
+  {% endfor %}
+  </div>
+  <h2>Cover letter</h2>
+  <textarea name="cover_letter" rows="16">{{ t.cover_letter }}</textarea>
+  <p><button type="submit" class="btn">Save</button></p>
+</form>
+{% if claude_enabled %}<form method="post" action="/jobs/{{ job.id }}/apply/claude" class="inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-secondary btn-small">Tailor with Claude</button>
+  <span class="muted small">Rewrites the summary, bullets and cover letter from your master resume; the honesty check still applies.</span>
+</form> · {% endif %}
+<form method="post" action="/jobs/{{ job.id }}/apply/reset" id="reset" class="inline">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="link">Start again from the master resume</button>
+</form>
+
+<section class="card" id="documents">
+  <h2>Documents</h2>
+  <form method="post" action="/jobs/{{ job.id }}/apply/generate">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn"{% if flags %} disabled{% endif %}>Generate resume + cover letter (DOCX and PDF)</button>
+    {% if blocked %}<span class="error">Fix the items above first.</span>{% endif %}
+  </form>
+  {% if versions %}
+  <ul class="timeline">
+    {% for v in versions %}
+    <li><strong>Version {{ v.number }}</strong> · {{ v.created_at|local_dt }}{% if v.ats_tailored is not none %} · ATS {{ v.ats_tailored }}%{% endif %}<br>
+      Resume: <a href="/documents/{{ v.id }}/resume.pdf">PDF</a> · <a href="/documents/{{ v.id }}/resume.docx">Word</a> —
+      Cover letter: <a href="/documents/{{ v.id }}/letter.pdf">PDF</a> · <a href="/documents/{{ v.id }}/letter.docx">Word</a></li>
+    {% endfor %}
+  </ul>
+  <p><a href="/jobs/{{ job.id }}/apply/compose" class="btn btn-secondary">Email the application…</a>
+    <span class="muted">or download the files and apply on the employer's site.</span></p>
+  {% endif %}
+</section>
+{% endblock %}

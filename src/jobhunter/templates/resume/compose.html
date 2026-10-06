@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Email application{% endblock %}
+{% block content %}
+<p><a href="/jobs/{{ job.id }}/apply">← Apply: {{ job.title }}</a></p>
+<h1>Email the application</h1>
+{% set e = errors or {} %}
+{% for k in ('preview', 'sender', 'attachments') %}{% if e[k] %}<p class="error" role="alert">{{ e[k] }}</p>{% endif %}{% endfor %}
+{% if not sender or not sender.from_address %}<p class="warn">Set up <a href="/settings/sender">Sender email</a> first.</p>{% endif %}
+<form method="post" action="/jobs/{{ job.id }}/apply/preview" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <p class="muted">From: {{ sender.display_name if sender else '' }} &lt;{{ sender.from_address if sender else '' }}&gt;</p>
+  <label>To (comma-separated) <input name="to" value="{{ compose.to|join(', ') }}">{% if e.to %}<span class="field-error">{{ e.to }}</span>{% endif %}</label>
+  <label>Subject <input name="subject" value="{{ compose.subject }}">{% if e.subject %}<span class="field-error">{{ e.subject }}</span>{% endif %}</label>
+  <label>Message <textarea name="body" rows="14">{{ compose.body }}</textarea>{% if e.body %}<span class="field-error">{{ e.body }}</span>{% endif %}</label>
+  <h2>Attachments</h2>
+  {% if choices %}{% for value, label in choices %}
+  <label class="check"><input type="checkbox" name="attachments" value="{{ value }}"{% if value in compose.attachments %} checked{% endif %}> {{ label }}</label>
+  {% endfor %}{% else %}<p class="muted">No documents yet: <a href="/jobs/{{ job.id }}/apply#documents">generate them</a> first.</p>{% endif %}
+  <p><button type="submit" class="btn">Preview</button> <span class="muted">Nothing is sent until you confirm on the next page.</span></p>
+</form>
+{% endblock %}

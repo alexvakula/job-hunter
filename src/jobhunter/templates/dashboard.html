@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+<div class="row">
+  <section class="card">
+    <h2>Response rate</h2>
+    {% if rate.percent is none %}
+    <p class="muted">No data yet: no jobs have reached "Applied".</p>
+    {% else %}
+    <p class="big">{{ rate.percent }}%</p>
+    <p class="muted">{{ rate.responded }} of {{ rate.applied }} applications got a response (screening, interview, offer, accepted or rejected).</p>
+    {% endif %}
+  </section>
+  <section class="card">
+    <h2>Jobs by status</h2>
+    <ul class="counts">
+      {% for s in status_order %}{% if counts[s] %}<li><a href="/jobs?status={{ s }}">{{ status_labels[s] }}</a> <strong>{{ counts[s] }}</strong></li>{% endif %}{% endfor %}
+      {% if not counts.values()|sum %}<li class="muted">No jobs yet. <a href="/jobs/new">Add one</a>.</li>{% endif %}
+    </ul>
+  </section>
+</div>
+
+<section class="card">
+  <h2>Follow-ups due</h2>
+  {% if due %}
+  <ul class="timeline">
+    {% for fu, job in due %}<li><strong>{{ fu.due_date }}</strong> <a href="/jobs/{{ job.id }}#followups">{{ job.title }} at {{ job.company }}</a> — {{ fu.description }}</li>{% endfor %}
+  </ul>
+  {% else %}<p class="muted">Nothing due.</p>{% endif %}
+</section>
+
+<section class="card">
+  <h2>Applications per week</h2>
+  {% if not peak %}<p class="muted">No applications in the last 12 weeks — no data yet.</p>{% endif %}
+  <table class="bars">
+    {% for week, n in weeks %}
+    <tr><td class="muted">{{ week.strftime('%b %d') }}</td>
+      <td class="bar-cell"><span class="bar" style="width: {{ (100 * n / peak) if peak else 0 }}%"></span></td>
+      <td>{{ n }}</td></tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

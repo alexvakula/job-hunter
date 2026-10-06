@@ -1,0 +1,27 @@
+{% set errs = notes_errors or {} %}
+<section id="notes" class="card">
+  <h2>Notes</h2>
+  <form method="post" action="/jobs/{{ job.id }}/notes" hx-post="/jobs/{{ job.id }}/notes" hx-target="#notes" hx-swap="outerHTML">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <label>Add a note <textarea name="body" rows="3" maxlength="20000">{{ (notes_form or {}).get('body', '') }}</textarea>
+      {% if errs.body %}<span class="field-error">{{ errs.body }}</span>{% endif %}</label>
+    <button type="submit" class="btn btn-small">Add note</button>
+  </form>
+  {% for n in notes %}
+  <article class="note">
+    <p class="muted">{{ n.created_at|local_dt }}{% if (n.updated_at - n.created_at).total_seconds() > 60 %} · edited {{ n.updated_at|local_dt }}{% endif %}</p>
+    <details>
+      <summary class="description">{{ n.body }}</summary>
+      <form method="post" action="/jobs/{{ job.id }}/notes/{{ n.id }}" hx-post="/jobs/{{ job.id }}/notes/{{ n.id }}" hx-target="#notes" hx-swap="outerHTML">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <textarea name="body" rows="3" maxlength="20000">{{ n.body }}</textarea>
+        <button type="submit" class="btn btn-small">Save</button>
+      </form>
+      <form method="post" action="/jobs/{{ job.id }}/notes/{{ n.id }}/delete" hx-post="/jobs/{{ job.id }}/notes/{{ n.id }}/delete" hx-target="#notes" hx-swap="outerHTML" hx-confirm="Delete this note?" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="link">Delete</button>
+      </form>
+    </details>
+  </article>
+  {% endfor %}
+</section>

@@ -1,0 +1,7 @@
+<div class="card">
+  <p><strong>{{ 'Daily search' if run.trigger == 'daily' else 'Search' }}</strong>
+    {{ run.started_at|local_dt }} — {{ run.status }}</p>
+  <ul>{% for name, st in run.summary.items() %}
+    <li>{{ name }}: {{ st.seen }} postings checked, {{ st.matched }} matched, {{ st.suggested }} new suggestions{% if st.error %} <span class="error">{{ st.error }}</span>{% endif %}</li>
+  {% endfor %}</ul>
+</div>

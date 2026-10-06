@@ -1,0 +1,41 @@
+From: Jane Recruiter <jane@acmerobotics.com>
+To: Sam Rivera <sam.jobs@example.org>
+Subject: Re: QA Lead at Acme Robotics
+Date: Sat, 03 Oct 2026 04:19:00 +0000
+Message-ID: <jane-1@acmerobotics.com>
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="===============2357466432716453384=="
+
+--===============2357466432716453384==
+Content-Type: multipart/alternative;
+ boundary="===============4811592510764965803=="
+
+--===============4811592510764965803==
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+
+Hi Sam,
+
+Thanks for applying. Are you free Tuesday?
+
+Jane
+
+--===============4811592510764965803==
+Content-Type: text/html; charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+MIME-Version: 1.0
+
+<p>Hi Sam,</p><p>Thanks for applying. Are you free <b>Tuesday</b>?</p><=
+p>Jane</p>
+
+--===============4811592510764965803==--
+
+--===============2357466432716453384==
+Content-Type: application/pdf
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="Interview schedule.pdf"
+MIME-Version: 1.0
+
+JVBERi0xLjQKJSVFT0YK
+
+--===============2357466432716453384==--

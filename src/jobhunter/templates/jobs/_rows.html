@@ -1,0 +1,39 @@
+<div id="job-rows">
+  <p class="muted">{{ total }} job{{ '' if total == 1 else 's' }}</p>
+  {% if not jobs %}
+  <p class="card">{% if total == 0 and not request.query_params %}No jobs yet. <a href="/jobs/new">Add your first job</a>.{% else %}No jobs match these filters.{% endif %}</p>
+  {% else %}
+  {% macro sort_link(key, label) -%}
+    {%- set next_dir = 'asc' if (f.sort != key or f.dir == 'desc') else 'desc' -%}
+    <a href="{{ page_url(sort=key, dir=next_dir, page=1) }}" hx-get="{{ page_url(sort=key, dir=next_dir, page=1) }}" hx-target="#job-rows" hx-push-url="true">{{ label }}{% if f.sort == key %} {{ '▲' if f.dir == 'asc' else '▼' }}{% endif %}</a>
+  {%- endmacro %}
+  <div class="table-wrap">
+  <table>
+    <thead><tr>
+      <th>{{ sort_link('title', 'Title') }}</th><th>{{ sort_link('company', 'Company') }}</th>
+      <th>{{ sort_link('location', 'Location') }}</th><th>{{ sort_link('status', 'Status') }}</th>
+      <th>Source</th><th>{{ sort_link('date_found', 'Found') }}</th>
+    </tr></thead>
+    <tbody>
+    {% for j in jobs %}
+      <tr>
+        <td class="job-title"><a href="/jobs/{{ j.id }}">{{ j.title }}</a></td>
+        <td>{{ j.company }}</td>
+        <td>{{ j.location or '' }}{% if j.work_mode != 'unknown' %} <span class="muted">({{ work_modes[j.work_mode] }})</span>{% endif %}</td>
+        <td><span class="badge">{{ status_labels[j.status] }}</span></td>
+        <td>{{ sources.get(j.source_id, '') }}</td>
+        <td>{{ j.date_found }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% if pages > 1 %}
+  <p class="pager">
+    {% if f.page > 1 %}<a href="{{ page_url(page=f.page - 1) }}" hx-get="{{ page_url(page=f.page - 1) }}" hx-target="#job-rows" hx-push-url="true">← Previous</a>{% endif %}
+    Page {{ f.page }} of {{ pages }}
+    {% if f.page < pages %}<a href="{{ page_url(page=f.page + 1) }}" hx-get="{{ page_url(page=f.page + 1) }}" hx-target="#job-rows" hx-push-url="true">Next →</a>{% endif %}
+  </p>
+  {% endif %}
+  {% endif %}
+</div>

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Family accounts{% endblock %}
+{% block content %}
+<h1>Family accounts</h1>
+{% include "admin/_nav.html" %}
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+{% if notice %}<p class="flash">{{ notice }}</p>{% endif %}
+<p><a href="/admin/users/new" class="btn btn-small">+ New account</a></p>
+<p class="muted">You manage accounts here, but each person's jobs, notes and resumes stay private to them.</p>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Username</th><th>Name</th><th>Role</th><th>Status</th><th>Last login</th><th>Actions</th></tr></thead>
+  <tbody>
+  {% for u in users %}
+  <tr{% if not u.is_active %} class="muted"{% endif %}>
+    <td>{{ u.username }}</td><td>{{ u.display_name }}</td><td>{{ u.role }}</td>
+    <td>{% if not u.is_active %}disabled{% elif u.must_change_password %}must set password{% else %}active{% endif %}</td>
+    <td>{{ u.last_login_at|local_dt if u.last_login_at else 'never' }}</td>
+    <td>
+      <details>
+        <summary class="link">Reset password</summary>
+        <form method="post" action="/admin/users/{{ u.id }}/reset-password">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+          <label>Temporary password <input type="text" name="temp_password" minlength="12" autocomplete="off" required></label>
+          <button type="submit" class="btn btn-small">Set temporary password</button>
+        </form>
+      </details>
+      {% if u.id != current_user.id %}
+      <form method="post" action="/admin/users/{{ u.id }}/{{ 'disable' if u.is_active else 'enable' }}" class="inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <button type="submit" class="link">{{ 'Disable' if u.is_active else 'Enable' }}</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Suggested jobs{% endblock %}
+{% block content %}
+<h1>Suggested jobs</h1>
+<p class="muted">Jobs found in your job-alert emails and by the daily automatic searches, best matches first. "Add" opens the normal add-job form so you can check the details first.</p>
+{% if claude_enabled %}<p><form method="post" action="/claude/find" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn btn-small">Find jobs with Claude</button></form>
+<form method="post" action="/claude/rank" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn btn-secondary btn-small">Rank with Claude</button></form>
+<a href="/suggestions?state={{ state }}&sort=fit">Sort by Claude fit</a></p>{% endif %}
+<p>{% for st, label in [('new','New'),('tracked','Already tracked'),('added','Added'),('dismissed','Dismissed'),('all','All')] %}
+  {% if state == st %}<strong>{{ label }}</strong>{% else %}<a href="/suggestions?state={{ st }}">{{ label }}</a>{% endif %}{% if st != 'all' %} ({{ counts.get(st, 0) }}){% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</p>
+{% if suggestions %}
+<div class="table-wrap"><table>
+  <thead><tr><th>Match</th><th>Fit</th><th>Job</th><th>Company</th><th>Location</th><th>From</th><th></th></tr></thead>
+  <tbody>
+  {% for s in suggestions %}
+  <tr>
+    <td>{% if s.fit_score is not none %}<strong title="{{ s.fit_reason }}">{{ s.fit_score }}</strong>{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td>{% if s.score is not none %}<strong title="{{ s.score_reasons|join(' · ') }}">{{ s.score }}</strong>{% else %}<span class="muted">—</span>{% endif %}</td>
+    <td><a href="{{ s.url }}" rel="noopener noreferrer" target="_blank">{{ s.title }} ↗</a>
+      {% if s.score_reasons %}<br><span class="muted small">{{ s.score_reasons|join(' · ') }}</span>{% endif %}
+      {% if s.fit_reason %}<br><span class="small">Claude: {{ s.fit_reason }}</span>{% endif %}</td>
+    <td>{{ s.company or '' }}</td><td>{{ s.location or '' }}</td>
+    <td class="muted">{{ {'jobbank': 'Job Bank search', 'watchlist': 'Watchlist', 'claude': 'Claude'}.get(s.origin, sources.get(s.source_id, '')) }}{% if s.email_id %} · <a href="/mail/{{ s.email_id }}">alert</a>{% endif %}</td>
+    <td>
+      {% if s.state == 'new' %}
+      <form method="post" action="/suggestions/{{ s.id }}/add" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn btn-small">Add</button></form>
+      <form method="post" action="/suggestions/{{ s.id }}/dismiss" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="link">Dismiss</button></form>
+      {% elif s.job_id %}<a href="/jobs/{{ s.job_id }}">{{ 'added' if s.state == 'added' else 'already tracked' }} →</a>
+      {% else %}<span class="muted">{{ s.state }}</span>{% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% else %}<p class="card muted">Nothing here. Job-alert emails in your job mailbox appear here after a check.</p>{% endif %}
+{% endblock %}

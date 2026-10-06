@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}Edit {{ job.title }}{% endblock %}
+{% block content %}
+<h1>Edit job</h1>
+<form method="post" action="/jobs/{{ job.id }}/edit" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% include "jobs/_form.html" with context %}
+  <button type="submit" class="btn">Save changes</button>
+  <a href="/jobs/{{ job.id }}" class="btn btn-secondary">Cancel</a>
+</form>
+{% endblock %}
