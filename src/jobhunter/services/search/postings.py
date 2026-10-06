@@ -1,7 +1,7 @@
 """Postings from automatic searches, and the rules that match and score them (FR-005, FR-011)."""
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 
 from jobhunter.models import LocationRule, TargetProfile
@@ -179,6 +179,14 @@ def rule_city(rule: LocationRule) -> str | None:
 
 
 def place_match(posting: Posting, rule: LocationRule) -> str | None:
+    """Multi-location postings ("A; B; C") match when any one of their places does."""
+    places = [p.strip() for p in (posting.location or "").split(";") if p.strip()]
+    if len(places) > 1:
+        for place in places:
+            where = place_match(replace(posting, location=place), rule)
+            if where:
+                return where
+        return None
     mode = _mode(posting)
     if mode and mode not in rule.work_modes:
         return None
@@ -237,6 +245,13 @@ def match(posting: Posting, profile: TargetProfile, rules: list[LocationRule]) -
         if best is None or candidate.score > best.score:
             best = candidate
     return best
+
+
+def title_matches(
+    posting: Posting, profiles: list[tuple[TargetProfile, list[LocationRule]]]
+) -> bool:
+    """Whether the title alone fits a target position (worth fetching more details)."""
+    return any(_title_points(posting.title, [p.name, *p.synonyms])[0] for p, _rules in profiles)
 
 
 def best_match(

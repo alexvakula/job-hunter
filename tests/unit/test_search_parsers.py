@@ -1,3 +1,4 @@
+import json
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
@@ -66,6 +67,9 @@ def _profile(exclude=("junior",), include=()):
         ("QE Lead", "Vancouver, BC", None, True),
         ("Compliance Lead, Testing", "Remote US", True, False),  # "testing" is not "test"
         ("Quality Engineer", "Calgary, AB", None, False),  # no lead/manager word
+        ("QA Lead", "Toronto, Ontario; Calgary, Alberta", None, True),  # any of several places
+        ("QA Lead", "Toronto, Ontario; Ottawa, Ontario", None, False),
+        ("QA Lead", "Austin, TX; Remote - United States", None, True),
     ],
 )
 def test_match_rules(title, location, remote, expected):
@@ -241,6 +245,19 @@ def test_board_parsers():
     wd = boards.parse_list(wd_board, (FIX / "workday_jobs.json").read_text(), "Acme")
     assert wd[0].url == "https://acme.wd3.myworkdayjobs.com/Careers/job/Calgary/QA-Lead_R1"
     assert boards.parse_list(wd_board, "garbage", "Acme") == []
+
+
+def test_workday_multi_location_and_detail():
+    board = boards.Board("workday", "acme", "acme.wd3.myworkdayjobs.com", "Careers")
+    ps = boards.parse_list(board, (FIX / "workday_multi.json").read_text(), "Acme")
+    assert ps[0].location is None
+    assert ps[0].detail_url == (
+        "https://acme.wd3.myworkdayjobs.com/wday/cxs/acme/Careers/job/Toronto/QA-Lead_R10"
+    )
+    detail = boards.workday_detail(json.loads((FIX / "workday_detail_r10.json").read_text()))
+    assert detail["location"] == "Toronto, Ontario; Calgary, Alberta; Montreal, Quebec"
+    assert detail["work_mode"] == "hybrid" and "test automation" in detail["description"]
+    assert boards.workday_detail({}) == {"location": None, "work_mode": None, "description": None}
 
 
 def test_more_board_parsers():

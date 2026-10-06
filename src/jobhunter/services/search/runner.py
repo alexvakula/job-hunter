@@ -21,10 +21,10 @@ from jobhunter.models import (
 from jobhunter.services.dedupe import normalize_url
 from jobhunter.services.fetch import FETCHED, Fetcher, get_fetcher
 from jobhunter.services.search import boards, jobbank
-from jobhunter.services.search.postings import Posting, best_match
+from jobhunter.services.search.postings import Posting, best_match, title_matches
 
 log = logging.getLogger(__name__)
-MAX_DETAIL_FETCHES = 20
+MAX_DETAIL_FETCHES = 40
 JSON_MAX_BYTES = 10 * 1024 * 1024
 _locks: dict[int, threading.Lock] = {}
 _guard = threading.Lock()
@@ -77,6 +77,45 @@ def active_profiles(session: Session, user_id: int) -> list[tuple[TargetProfile,
     return out
 
 
+def _already_suggested(session, user_id, url_norm) -> bool:
+    return (
+        session.exec(
+            select(JobSuggestion.id).where(
+                JobSuggestion.user_id == user_id, JobSuggestion.url_norm == url_norm
+            )
+        ).first()
+        is not None
+    )
+
+
+def _fill_detail(session, posting: Posting, fetcher, budget) -> None:
+    """Completes a posting from its board's job detail (Greenhouse description; Workday
+    places, work mode and description), within the per-run budget of detail requests."""
+    if not (fetcher and budget and budget[0] > 0 and posting.detail_url):
+        return
+    budget[0] -= 1
+    workday = "/wday/cxs/" in posting.detail_url
+    src = _source(session, "Workday" if workday else "Greenhouse")
+    if src is None:
+        return
+    res = fetcher.fetch(posting.detail_url, src, max_bytes=JSON_MAX_BYTES)
+    posting.detail_url = None  # one attempt per posting
+    if res.status != FETCHED:
+        return
+    try:
+        data = json.loads(res.html)
+    except ValueError:
+        return
+    if not workday:
+        posting.description = boards.greenhouse_detail(data)
+        return
+    detail = boards.workday_detail(data)
+    posting.location = posting.location or detail["location"]
+    posting.work_mode = posting.work_mode or detail["work_mode"]
+    posting.remote = bool(posting.remote or posting.work_mode == "remote")
+    posting.description = posting.description or detail["description"]
+
+
 def _suggest(
     session,
     user_id,
@@ -90,39 +129,31 @@ def _suggest(
     detail_budget=None,
 ) -> None:
     stats.seen += 1
+    url_norm = normalize_url(posting.url)
+    if (
+        posting.location is None
+        and posting.detail_url
+        and url_norm
+        and title_matches(posting, profiles)
+        and not _already_suggested(session, user_id, url_norm)
+    ):
+        # e.g. Workday's "3 Locations": the places are only in the job's detail
+        _fill_detail(session, posting, fetcher, detail_budget)
     m = best_match(posting, profiles)
     if m is None:
         return
     stats.matched += 1
-    url_norm = normalize_url(posting.url)
     if url_norm is None:
         return
-    exists = session.exec(
-        select(JobSuggestion.id).where(
-            JobSuggestion.user_id == user_id, JobSuggestion.url_norm == url_norm
-        )
-    ).first()
-    if exists is not None:
+    if _already_suggested(session, user_id, url_norm):
         return
     tracked = session.exec(
         select(Job.id).where(Job.user_id == user_id, Job.url_norm == url_norm)
     ).first()
     description = posting.description
-    if (
-        description is None
-        and posting.detail_url
-        and fetcher
-        and detail_budget
-        and detail_budget[0] > 0
-    ):
-        detail_budget[0] -= 1
-        src = _source(session, "Greenhouse")
-        res = fetcher.fetch(posting.detail_url, src, max_bytes=JSON_MAX_BYTES)
-        if res.status == FETCHED:
-            try:
-                description = boards.greenhouse_detail(json.loads(res.html))
-            except ValueError:
-                description = None
+    if description is None and posting.detail_url:
+        _fill_detail(session, posting, fetcher, detail_budget)
+        description = posting.description
     session.add(
         JobSuggestion(
             user_id=user_id,

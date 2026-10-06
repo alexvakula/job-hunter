@@ -211,22 +211,44 @@ def parse_ashby(data: dict, company: str) -> list[Posting]:
     return out
 
 
+_MULTI_PLACE = re.compile(r"^\d+\s+Locations?$", re.I)
+
+
 def parse_workday(data: dict, board: Board, company: str) -> list[Posting]:
+    """Postings in several places only say "3 Locations" here; their places come from
+    the detail (``detail_url``, see ``workday_detail``)."""
     out = []
     for j in data.get("jobPostings", []):
         path = j.get("externalPath")
         if not path:
             continue
+        place = j.get("locationsText")
+        if place and _MULTI_PLACE.match(place.strip()):
+            place = None
         out.append(
             Posting(
                 title=j.get("title", ""),
                 url=f"https://{board.host}/{board.site}{path}",
                 company=company,
-                location=j.get("locationsText"),
-                remote="remote" in (j.get("locationsText") or "").lower(),
+                location=place,
+                remote="remote" in (place or "").lower(),
+                detail_url=f"https://{board.host}/wday/cxs/{board.board_id}/{board.site}{path}",
             )
         )
     return out
+
+
+def workday_detail(data: dict) -> dict:
+    """Places, work mode and description from a Workday job detail."""
+    info = data.get("jobPostingInfo") or {}
+    places = [p for p in [info.get("location"), *(info.get("additionalLocations") or [])] if p]
+    mode = _MODES.get((info.get("remoteType") or "").lower().replace("-", "").replace(" ", ""))
+    desc = info.get("jobDescription")
+    return {
+        "location": "; ".join(dict.fromkeys(places)) or None,
+        "work_mode": mode,
+        "description": html_to_text(html_lib.unescape(desc)) if desc else None,
+    }
 
 
 _MODES = {"remote": "remote", "hybrid": "hybrid", "onsite": "onsite", "on_site": "onsite"}

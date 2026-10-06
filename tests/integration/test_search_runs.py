@@ -124,7 +124,7 @@ class BigWorkday(FakeFetcher):
     """A Workday board with 1,500 jobs: the full list holds no QA roles, searches do."""
 
     def fetch(self, url, source, *, method="GET", json_body=None, max_bytes=0):
-        if "myworkdayjobs.com" not in url:
+        if "myworkdayjobs.com" not in url or json_body is None:  # job details: not found
             return super().fetch(url, source, method=method, json_body=json_body)
         self.calls.append((method, url, dict(json_body)))
         text, offset = json_body["searchText"], json_body["offset"]
@@ -177,9 +177,43 @@ def test_big_workday_boards_are_searched_by_title(two_users, session, app):
         for s in session.exec(select(JobSuggestion).where(JobSuggestion.user_id == uid)).all()
     )
     assert got == ["QA Lead", "Test Manager"]
-    searches = [b["searchText"] for _m, u, b in fake.calls if "myworkdayjobs" in u]
+    searches = [b["searchText"] for _m, u, b in fake.calls if "myworkdayjobs" in u and b]
     assert searches.count("") == 10  # the first 200 jobs, then searches only
     assert {"QA Lead", "Test Manager", "QA Manager", "Test Lead"} <= set(searches)
+
+
+def test_workday_multi_location_jobs_get_their_places(two_users, session, app):
+    alice, _ = two_users
+    uid = _uid(session)
+    qa_lead(session, uid)
+    _watch(session, uid, "workday", "multi", host="multi.wd1.myworkdayjobs.com", site="Careers")
+    base = "https://multi.wd1.myworkdayjobs.com/wday/cxs/multi/Careers"
+    fake = FakeFetcher(
+        {
+            f"{base}/jobs": "workday_multi.json",
+            f"{base}/job/Toronto/QA-Lead_R10": "workday_detail_r10.json",
+            f"{base}/job/Toronto/Test-Lead_R11": "workday_detail_r11.json",
+        }
+    )
+    app.dependency_overrides[get_fetcher] = lambda: fake
+    app.dependency_overrides[get_launcher] = lambda: lambda job: job()
+    try:
+        assert alice.post("/sources/import").status_code == 200
+        details = [u for _m, u, _b in fake.calls if "/job/" in u]
+        # only postings whose title fits a target position are looked up
+        assert details == [f"{base}/job/Toronto/QA-Lead_R10", f"{base}/job/Toronto/Test-Lead_R11"]
+        session.expire_all()
+        (sug,) = session.exec(select(JobSuggestion).where(JobSuggestion.user_id == uid)).all()
+        assert sug.title == "QA Lead" and "Calgary, Alberta" in sug.location
+        assert "test automation" in sug.description
+        # the next run does not look up the already suggested job again
+        fake.calls.clear()
+        alice.post("/sources/import")
+        assert [u for _m, u, _b in fake.calls if "/job/" in u] == [
+            f"{base}/job/Toronto/Test-Lead_R11"
+        ]
+    finally:
+        app.dependency_overrides.clear()
 
 
 def test_second_run_and_dismissed_are_not_resuggested(setup, session):

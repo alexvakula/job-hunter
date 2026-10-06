@@ -54,6 +54,9 @@ results each) through the same public Workday search the career site uses.
   unsupported; their jobs are added by link or text.
 - **FR-006**: Workday boards with more than 200 jobs MUST be searched per target title; results are
   merged without duplicates.
+- **FR-007**: Workday postings shown only as "N Locations" whose title fits a target position MUST
+  be looked up once (within the per-run detail budget) to get all places, work mode and
+  description; a multi-place posting matches when any one of its places does.
 
 ## Success Criteria
 

@@ -1,0 +1,8 @@
+{
+ "total": 3,
+ "jobPostings": [
+  {"title": "QA Lead", "externalPath": "/job/Toronto/QA-Lead_R10", "locationsText": "3 Locations"},
+  {"title": "Test Lead", "externalPath": "/job/Toronto/Test-Lead_R11", "locationsText": "2 Locations"},
+  {"title": "Sales Representative", "externalPath": "/job/Toronto/Sales_R12", "locationsText": "2 Locations"}
+ ]
+}

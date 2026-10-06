@@ -28,7 +28,8 @@ Company watchlist: public job boards of chosen employers
          companies; boards on Greenhouse, Lever, Ashby, Pinpoint, Rippling and JazzHR are found
          through their public feeds (never the companies' own websites)
   Big employers on Workday (more than 200 open jobs, e.g. Medtronic, TD, Accenture) are searched
-         with each target-position title instead of being read in full.
+         with each target-position title instead of being read in full. Jobs listed as
+         "3 Locations" whose title fits are looked up once to get their places and description.
   Rules: official public feeds; robots.txt allows each one; at most 1 request per second per API
          host, 5 seconds between requests to the same careers site
   Not supported yet: SuccessFactors, Phenom, Eightfold, Oracle Cloud, Dayforce, iCIMS, Taleo and
