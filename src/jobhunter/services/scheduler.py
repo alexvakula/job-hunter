@@ -33,6 +33,12 @@ def run_all_checks() -> None:
         run_due_searches(session)
         queue_daily_claude(session)
         try:
+            from jobhunter.services import reminders
+
+            reminders.send_due(session)
+        except Exception:  # noqa: BLE001
+            log.exception("reminders failed")
+        try:
             discovery.run_batch(session)
         except Exception:  # noqa: BLE001
             log.exception("board discovery batch failed")

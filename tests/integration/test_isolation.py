@@ -153,11 +153,9 @@ def test_other_users_objects_are_not_found(app, two_users, alice_objects, sessio
                     },
                 )
             # Admin pages refuse non-admins outright; everything else hides alice's objects.
-            admin_only = (
-                route.path.startswith(("/admin", "/claude"))
-                or route.path.endswith(("/apply/claude",))
-                or route.path.startswith("/resume/claude-import")
-            )
+            admin_only = route.path.startswith(
+                ("/admin", "/claude", "/resume/claude-import")
+            ) or route.path.endswith(("/apply/claude", "/prep"))
             expected = 403 if admin_only else 404
             assert resp.status_code == expected, (method, route.path, resp.status_code)
             assert "secret alice posting" not in resp.text

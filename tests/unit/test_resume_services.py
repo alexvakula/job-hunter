@@ -151,7 +151,10 @@ def test_snapshot_facts_always_from_master():
     forged = copy.deepcopy(draft)
     forged["experience"][0]["employer"] = "Google"  # extra keys are ignored
     snap = tailor.snapshot(MASTER, forged)
-    assert [e["employer"] for e in snap["experience"]] == ["Northwind Imaging", "Société Générale Tech"]
+    assert [e["employer"] for e in snap["experience"]] == [
+        "Northwind Imaging",
+        "Société Générale Tech",
+    ]
     assert len(snap["experience"][0]["bullets"]) == 3
     assert snap["certifications"] == MASTER["certifications"]
 

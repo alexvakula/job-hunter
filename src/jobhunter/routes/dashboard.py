@@ -6,7 +6,7 @@ from sqlmodel import Session
 from jobhunter.auth.sessions import current_user
 from jobhunter.db import get_session
 from jobhunter.models import ACTIVE_STATUSES, CLOSED_STATUSES, UserAccount
-from jobhunter.services import stats
+from jobhunter.services import reminders, stats
 from jobhunter.web import render
 
 router = APIRouter()
@@ -26,5 +26,7 @@ def dashboard(
         rate=stats.response_rate(db, user.id),
         counts=stats.counts_per_status(db, user.id),
         due=stats.due_follow_ups(db, user.id),
+        quiet=reminders.no_reply(db, user.id, reminders.settings_for(db, user.id).stale_days),
+        stale_days=reminders.settings_for(db, user.id).stale_days,
         status_order=[s.value for s in ACTIVE_STATUSES + CLOSED_STATUSES],
     )

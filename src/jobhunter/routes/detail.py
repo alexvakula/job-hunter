@@ -46,6 +46,14 @@ def followups_for(db: Session, job: Job) -> list[FollowUp]:
     )
 
 
+def _prep_for(db: Session, job: Job):
+    from jobhunter.models import JobPrep
+
+    return db.exec(
+        select(JobPrep).where(JobPrep.job_id == job.id, JobPrep.user_id == job.user_id)
+    ).first()
+
+
 def detail_context(db: Session, job: Job, **extra) -> dict:
     context = {
         "job": job,
@@ -56,6 +64,7 @@ def detail_context(db: Session, job: Job, **extra) -> dict:
         "notes": notes_for(db, job),
         "contacts": contacts_for(db, job),
         "followups": followups_for(db, job),
+        "prep": _prep_for(db, job),
         "job_emails": list(
             db.exec(
                 select(EmailMessage)

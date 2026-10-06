@@ -9,6 +9,8 @@ A small, self-hosted job-search tracker for one family, running at
 - keep notes, contacts and follow-up dates per job, and see a dashboard (applications per
   week, response rate, follow-ups due),
 - describe target positions (titles, places, work modes, salary floors),
+- get a **daily Telegram reminder** (per person) for follow-ups due and applications with no reply,
+  export jobs as **CSV**, and (admin, with Claude) generate **interview prep** and company notes,
 - keep a structured **master resume** (imported from the uploaded DOCX/PDF) and **apply from the
   app**: per job an ATS keyword match score, a tailored resume (reordered/selected from real
   experience, with an honesty check that blocks anything not in the master resume), an editable
@@ -75,6 +77,7 @@ cd /opt/docker/job-hunter && docker compose up -d --build   # migrations run on 
 | `MAILBOX_SCHEDULER` | `off` disables the 15-minute background mailbox check (default on) |
 | `CLAUDE_CODE_OAUTH_TOKEN` | admin's Claude token from `claude setup-token` (optional) |
 | `CLAUDE_DAILY` | `off` disables the daily Claude Find jobs run (default on) |
+| `TELEGRAM_BOT_TOKEN` | bot used for daily reminders (only `sendMessage` is called) |
 | `APP_TIMEZONE` | default `America/Edmonton` |
 
 ## Accounts (run inside the container)
@@ -125,6 +128,6 @@ SQLite backup plus an archive of uploaded files to
 
 ## Not yet included
 
-Telegram reminders and interview-prep notes. Not searched automatically, by their own rules: LinkedIn,
+Ideas welcome. Not searched automatically, by their own rules: LinkedIn,
 Indeed, Glassdoor, Eluta (use their alert emails) and ABTEC 5000 (import its list). See
 `docs/product-brief.md`.

@@ -74,7 +74,10 @@ def process_next(session: Session) -> ClaudeJob | None:
             user = session.get(UserAccount, job.user_id)
             if not enabled_for(user):
                 raise cli.ClaudeError("Claude is only available to the admin with a token.")
-            outcome = tasks.HANDLERS[job.kind](session, user, job)
+            from jobhunter.services.claude.prep import prep_job
+
+            handlers = {**tasks.HANDLERS, "prep": prep_job}
+            outcome = handlers[job.kind](session, user, job)
             job.status, job.summary = "done", outcome.summary
             job.result, job.cost_usd = outcome.result, outcome.cost_usd
         except cli.ClaudeError as exc:

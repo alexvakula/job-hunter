@@ -5,7 +5,7 @@ from datetime import date
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, Response
 from sqlalchemy import exists, func
 from sqlmodel import Session, select
 
@@ -172,6 +172,105 @@ def list_jobs(
     if is_htmx(request) and request.headers.get("HX-Target") == "job-rows":
         return render(request, "jobs/_rows.html", **context)
     return render(request, "jobs/list.html", **context)
+
+
+_FORMULA_START = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _cell(value) -> str:
+    """CSV cell, neutralised against spreadsheet formula injection (FR-004)."""
+    text = "" if value is None else str(value)
+    return "'" + text if text.startswith(_FORMULA_START) else text
+
+
+@router.get("/jobs/export.csv")
+def export_csv(
+    request: Request, user: UserAccount = Depends(current_user), db: Session = Depends(get_session)
+):
+    import csv
+    import io
+
+    from jobhunter.models import Contact, StatusChange
+
+    f = _filters(request)
+    jobs = db.exec(_filtered_query(user.id, f).order_by(Job.date_found.desc(), Job.id.desc())).all()
+    sources = {s.id: s.name for s in db.exec(select(Source)).all()}
+    profile_names = {p.id: p.name for p in db.exec(repo.scoped(TargetProfile, user.id)).all()}
+    out = io.StringIO()
+    w = csv.writer(out)
+    w.writerow(
+        [
+            "Title",
+            "Company",
+            "Location",
+            "Work mode",
+            "Status",
+            "Source",
+            "Target position",
+            "Date found",
+            "Date applied",
+            "Last status change",
+            "Salary",
+            "Link",
+            "Contacts",
+            "Next follow-up",
+            "Notes",
+        ]
+    )
+    for j in jobs:
+        history = db.exec(
+            select(StatusChange)
+            .where(StatusChange.job_id == j.id)
+            .order_by(StatusChange.effective_at)
+        ).all()
+        applied = next((h for h in history if h.to_status == "applied"), None)
+        contacts = db.exec(select(Contact).where(Contact.job_id == j.id)).all()
+        follow = db.exec(
+            select(FollowUp)
+            .where(FollowUp.job_id == j.id, FollowUp.done.is_(False))
+            .order_by(FollowUp.due_date)
+        ).first()
+        from jobhunter.models import Note
+
+        notes = len(db.exec(select(Note.id).where(Note.job_id == j.id)).all())
+        salary = j.salary_text or (
+            f"{j.salary_currency} {j.salary_min}-{j.salary_max} per {j.salary_period}"
+            if j.salary_min is not None
+            else ""
+        )
+        w.writerow(
+            [
+                _cell(v)
+                for v in (
+                    j.title,
+                    j.company,
+                    j.location,
+                    WORK_MODE_LABELS.get(j.work_mode, j.work_mode),
+                    j.status,
+                    sources.get(j.source_id, ""),
+                    profile_names.get(j.profile_id, ""),
+                    j.date_found,
+                    to_local_date(applied.effective_at) if applied else "",
+                    to_local_date(history[-1].effective_at) if history else "",
+                    salary,
+                    j.url or "",
+                    "; ".join(f"{c.name} <{c.email}>" if c.email else c.name for c in contacts),
+                    f"{follow.due_date} {follow.description}".strip() if follow else "",
+                    notes,
+                )
+            ]
+        )
+    return Response(
+        content="\ufeff" + out.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="jobs-{today_local()}.csv"'},
+    )
+
+
+def to_local_date(value):
+    from jobhunter.db import to_local
+
+    return to_local(value).date() if value else ""
 
 
 @router.get("/jobs/new")

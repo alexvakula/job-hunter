@@ -36,6 +36,7 @@
   </div>
   <input type="hidden" name="sort" value="{{ f.sort }}"><input type="hidden" name="dir" value="{{ f.dir }}">
   <button type="submit" class="btn btn-small">Apply</button> <a href="/jobs" class="btn btn-secondary btn-small">Clear</a>
+  <a href="/jobs/export.csv?{{ request.query_params }}" class="btn btn-secondary btn-small">Export CSV</a>
 </form>
 {% include "jobs/_rows.html" %}
 {% endblock %}

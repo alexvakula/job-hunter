@@ -31,6 +31,13 @@
 </section>
 
 <section class="card">
+  <h2>No reply for {{ stale_days }}+ days</h2>
+  {% if quiet %}
+  <ul class="timeline">{% for job, days in quiet %}<li><a href="/jobs/{{ job.id }}">{{ job.title }} at {{ job.company }}</a> — applied {{ days }} days ago</li>{% endfor %}</ul>
+  {% else %}<p class="muted">Nothing waiting.</p>{% endif %}
+</section>
+
+<section class="card">
   <h2>Applications per week</h2>
   {% if not peak %}<p class="muted">No applications in the last 12 weeks — no data yet.</p>{% endif %}
   <table class="bars">

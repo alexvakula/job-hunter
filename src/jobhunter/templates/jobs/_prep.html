@@ -1,0 +1,27 @@
+{% if prep or claude_enabled %}
+<section id="prep" class="card">
+  <h2>Interview prep</h2>
+  {% if claude_enabled %}
+  <form method="post" action="/jobs/{{ job.id }}/prep" class="inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+    <button type="submit" class="btn btn-secondary btn-small">{{ 'Prepare again' if prep else 'Prepare with Claude' }}</button>
+    <span class="muted small">Company overview from the web, likely questions, answers built from your master resume.</span>
+  </form>
+  {% endif %}
+  {% if prep %}
+  <p class="muted small">Prepared {{ prep.updated_at|local_dt }}</p>
+  <h3>Company overview</h3>
+  <div class="description">{{ prep.data.company_overview }}</div>
+  <h3>Likely questions</h3>
+  {% for q in prep.data.questions %}
+  <details class="contact"><summary><strong>{{ q.question }}</strong></summary>
+    <p class="muted">{{ q.why }}</p>
+    <div class="description">{{ q.answer_outline }}</div>
+    {% if q.resume_quotes %}<p class="small">From your resume:</p><ul class="small">{% for quote in q.resume_quotes %}<li>{{ quote }}</li>{% endfor %}</ul>{% endif %}
+  </details>
+  {% endfor %}
+  <h3>Questions to ask them</h3>
+  <ul>{% for q in prep.data.questions_to_ask %}<li>{{ q }}</li>{% endfor %}</ul>
+  {% endif %}
+</section>
+{% endif %}

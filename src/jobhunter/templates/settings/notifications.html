@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<h1>Notifications</h1>
+{% set e = errors or {} %}
+{% if saved %}<p class="flash">Saved.</p>{% endif %}
+{% if test_result %}<p class="{{ 'flash' if test_result.ok else 'error' }}">{{ 'Test message sent.' if test_result.ok else test_result.message }}</p>{% endif %}
+{% if not bot_configured %}<p class="warn">The family Telegram bot isn't configured yet (the admin adds TELEGRAM_BOT_TOKEN to the server's .env).</p>{% endif %}
+{% if ns.last_error %}<p class="error">Last reminder failed: {{ ns.last_error }}</p>{% endif %}
+<form method="post" action="/settings/notifications" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <p class="muted">Each morning (after 8:00) you get one Telegram message with your follow-ups that are due and applications without a reply — only when there is something to do.</p>
+  <label>Your Telegram chat id <input name="telegram_chat_id" value="{{ ns.telegram_chat_id or '' }}" inputmode="numeric" placeholder="123456789">
+    {% if e.telegram_chat_id %}<span class="field-error">{{ e.telegram_chat_id }}</span>{% endif %}</label>
+  <p class="muted small">Open the family bot in Telegram and send <code>/start</code> once. To find your chat id, message <code>@userinfobot</code> in Telegram.</p>
+  <label>Remind me about applications with no reply after (days)
+    <input name="stale_days" inputmode="numeric" value="{{ ns.stale_days }}">{% if e.stale_days %}<span class="field-error">{{ e.stale_days }}</span>{% endif %}</label>
+  <label class="check"><input type="checkbox" name="reminders_enabled" value="1"{% if ns.reminders_enabled %} checked{% endif %}> Send daily reminders</label>
+  <p><button type="submit" class="btn">Save</button></p>
+</form>
+<form method="post" action="/settings/notifications/test" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <button type="submit" class="btn btn-secondary">Send a test message</button>
+  <span class="muted">Sends today's reminder (or a short test) to your chat now.</span>
+</form>
+{% endblock %}

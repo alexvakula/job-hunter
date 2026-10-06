@@ -18,6 +18,7 @@ KIND_LABELS = {
     "fit_rank": "Fit ranking",
     "tailor": "Tailoring",
     "import": "Resume import",
+    "prep": "Interview prep",
 }
 
 
@@ -88,6 +89,17 @@ def tailor(
 ):
     job = repo.get_owned(db, Job, job_id, user.id)
     return _queue(db, user, "tailor", {"job_id": job.id}, request)
+
+
+@router.post("/jobs/{job_id}/prep", dependencies=[Depends(csrf_protect)])
+def prep(
+    job_id: int,
+    request: Request,
+    user: UserAccount = Depends(require_admin),
+    db: Session = Depends(get_session),
+):
+    job = repo.get_owned(db, Job, job_id, user.id)
+    return _queue(db, user, "prep", {"job_id": job.id}, request)
 
 
 @router.post("/resume/claude-import", dependencies=[Depends(csrf_protect)])

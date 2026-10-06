@@ -537,3 +537,36 @@ class ClaudeJob(SQLModel, table=True):
     created_at: datetime = Field(default_factory=utcnow)
     started_at: datetime | None = None
     finished_at: datetime | None = None
+
+
+# --- feature 006: reminders, export, interview prep ---------------------------------------
+
+
+class NotificationSettings(SQLModel, table=True):
+    """Per-user Telegram reminders. The bot token comes from TELEGRAM_BOT_TOKEN, never the DB."""
+
+    __tablename__ = "notification_settings"
+
+    user_id: int = Field(
+        sa_column=Column(
+            Integer, ForeignKey("user_account.id", ondelete="CASCADE"), primary_key=True
+        )
+    )
+    telegram_chat_id: str | None = None
+    reminders_enabled: bool = True
+    stale_days: int = 7
+    last_sent_on: date | None = None
+    last_error: str | None = None
+
+
+class JobPrep(SQLModel, table=True):
+    """Claude interview-prep and company notes for one job (admin only)."""
+
+    __tablename__ = "job_prep"
+    __table_args__ = (Index("ux_job_prep_user_job", "user_id", "job_id", unique=True),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(sa_column=_fk("user_account.id"))
+    job_id: int = Field(sa_column=_fk("job.id"))
+    data: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
+    updated_at: datetime = Field(default_factory=utcnow)
