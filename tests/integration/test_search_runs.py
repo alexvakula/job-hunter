@@ -6,7 +6,7 @@ from sqlmodel import select
 
 from jobhunter.models import JobSuggestion, SearchRun, UserAccount, WatchCompany
 from jobhunter.routes.watchlist import get_launcher
-from jobhunter.services.fetch import FETCH_FAILED, Fetcher, get_fetcher
+from jobhunter.services.fetch import FETCH_FAILED, FETCHED, Fetcher, FetchResult, get_fetcher
 from jobhunter.services.search import runner
 from tests.search_helpers import FIX, FakeFetcher, qa_lead, standard_routes
 
@@ -118,6 +118,68 @@ def test_more_boards_are_searched(two_users, session, app):
     ]
     companies = session.exec(select(WatchCompany).where(WatchCompany.user_id == uid)).all()
     assert {c.status for c in companies} == {"ok"}
+
+
+class BigWorkday(FakeFetcher):
+    """A Workday board with 1,500 jobs: the full list holds no QA roles, searches do."""
+
+    def fetch(self, url, source, *, method="GET", json_body=None, max_bytes=0):
+        if "myworkdayjobs.com" not in url:
+            return super().fetch(url, source, method=method, json_body=json_body)
+        self.calls.append((method, url, dict(json_body)))
+        text, offset = json_body["searchText"], json_body["offset"]
+        if not text:
+            jobs = [
+                {"title": f"Sales Rep {offset + i}", "externalPath": f"/job/X/S{offset + i}"}
+                for i in range(20)
+            ]
+            return FetchResult(FETCHED, html=json.dumps({"total": 1500, "jobPostings": jobs}))
+        hits = {
+            "QA Lead": [
+                {
+                    "title": "QA Lead",
+                    "externalPath": "/job/Calgary/QA_R1",
+                    "locationsText": "Calgary, AB",
+                }
+            ],
+            "Test Manager": [
+                {
+                    "title": "Test Manager",
+                    "externalPath": "/job/Vancouver/TM_R2",
+                    "locationsText": "Vancouver, BC",
+                },
+                {
+                    "title": "QA Lead",
+                    "externalPath": "/job/Calgary/QA_R1",
+                    "locationsText": "Calgary, AB",
+                },
+            ],
+        }.get(text, [])
+        total = len(hits) if offset == 0 else 0
+        return FetchResult(FETCHED, html=json.dumps({"total": total, "jobPostings": hits}))
+
+
+def test_big_workday_boards_are_searched_by_title(two_users, session, app):
+    alice, _ = two_users
+    uid = _uid(session)
+    qa_lead(session, uid)
+    _watch(session, uid, "workday", host="big.wd1.myworkdayjobs.com", site="Careers", name="Big")
+    fake = BigWorkday({})
+    app.dependency_overrides[get_fetcher] = lambda: fake
+    app.dependency_overrides[get_launcher] = lambda: lambda job: job()
+    try:
+        assert alice.post("/sources/import").status_code == 200
+    finally:
+        app.dependency_overrides.clear()
+    session.expire_all()
+    got = sorted(
+        s.title
+        for s in session.exec(select(JobSuggestion).where(JobSuggestion.user_id == uid)).all()
+    )
+    assert got == ["QA Lead", "Test Manager"]
+    searches = [b["searchText"] for _m, u, b in fake.calls if "myworkdayjobs" in u]
+    assert searches.count("") == 10  # the first 200 jobs, then searches only
+    assert {"QA Lead", "Test Manager", "QA Manager", "Test Lead"} <= set(searches)
 
 
 def test_second_run_and_dismissed_are_not_resuggested(setup, session):

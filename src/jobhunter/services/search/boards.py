@@ -18,7 +18,9 @@ from jobhunter.services.extract import html_to_text
 from jobhunter.services.search.postings import Posting
 
 WORKDAY_PAGE_SIZE = 20
-WORKDAY_MAX = 200
+WORKDAY_MAX = 200  # read in full up to this many jobs
+WORKDAY_SEARCH_MAX = 100  # per target-title search on larger boards
+WORKDAY_MAX_TITLES = 8
 
 
 @dataclass

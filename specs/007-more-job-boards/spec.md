@@ -31,6 +31,13 @@ Imported companies are also looked up automatically on Pinpoint, Rippling and Ja
    pasting the link of one job page.
 4. **Given** companies earlier marked "board not found", **Then** they are looked up again.
 
+## User Story 2 - Big employers (Priority: P1)
+
+"Include big companies like Medtronic, GlobalLogic and others." Large employers mostly use Workday
+with hundreds or thousands of open jobs; reading only the newest 200 misses most QA roles. Boards
+reporting more than 200 jobs are searched with each target-position title (up to 8 titles, 100
+results each) through the same public Workday search the career site uses.
+
 ## Requirements
 
 - **FR-001**: Links MUST be recognised: `<company>.pinpointhq.com`, `ats.rippling.com/<company>`,
@@ -45,6 +52,8 @@ Imported companies are also looked up automatically on Pinpoint, Rippling and Ja
   full web page) and only the board services, never the company's website.
 - **FR-005**: Systems without a public feed (Dayforce, iCIMS, Taleo, SuccessFactors) stay
   unsupported; their jobs are added by link or text.
+- **FR-006**: Workday boards with more than 200 jobs MUST be searched per target title; results are
+  merged without duplicates.
 
 ## Success Criteria
 

@@ -181,6 +181,59 @@ SOURCE_FOR_BOARD = {
 }
 
 
+def _search_titles(profiles) -> list[str]:
+    out: list[str] = []
+    for profile, _rules in profiles:
+        for t in [profile.name, *profile.synonyms]:
+            if t and t.strip().lower() not in {o.lower() for o in out}:
+                out.append(t.strip())
+    return out[: boards.WORKDAY_MAX_TITLES]
+
+
+def _read_pages(fetcher, source, board, company_name, search_text, limit):
+    """Pages of one job list; (postings, total reported by the board, error)."""
+    method, url, body = boards.list_request(board)
+    postings: list[Posting] = []
+    offset, total = 0, 0
+    while True:
+        if body is not None:
+            body["offset"], body["searchText"] = offset, search_text
+        res = fetcher.fetch(url, source, method=method, json_body=body, max_bytes=JSON_MAX_BYTES)
+        if res.status != FETCHED:
+            return postings, total, res.message or res.status
+        page = boards.parse_list(board, res.html, company_name)
+        postings.extend(page)
+        if board.type != "workday" or not page:
+            return postings, total, None
+        offset += len(page)
+        try:
+            total = json.loads(res.html).get("total", 0) or total
+        except ValueError:
+            pass
+        if offset >= min(total, limit):
+            return postings, total, None
+
+
+def _read_board(fetcher, source, board, company_name, titles):
+    """A board's postings. Large Workday boards (more than WORKDAY_MAX jobs, e.g. big
+    employers) are searched once per target title instead of being read in full."""
+    postings, total, error = _read_pages(
+        fetcher, source, board, company_name, "", boards.WORKDAY_MAX
+    )
+    if error or board.type != "workday" or total <= boards.WORKDAY_MAX or not titles:
+        return postings, error
+    by_url = {p.url: p for p in postings}
+    for title in titles:
+        found, _total, error = _read_pages(
+            fetcher, source, board, company_name, title, boards.WORKDAY_SEARCH_MAX
+        )
+        if error:
+            return list(by_url.values()), error
+        for p in found:
+            by_url.setdefault(p.url, p)
+    return list(by_url.values()), None
+
+
 def _run_watchlist(session, user_id, profiles, fetcher, stats: SourceStats) -> None:
     companies = session.exec(
         select(WatchCompany).where(
@@ -190,6 +243,7 @@ def _run_watchlist(session, user_id, profiles, fetcher, stats: SourceStats) -> N
         )
     ).all()
     budget = [MAX_DETAIL_FETCHES]
+    titles = _search_titles(profiles)
     for company in companies:
         board = boards.Board(
             company.board_type, company.board_id, company.board_host, company.board_site
@@ -197,30 +251,7 @@ def _run_watchlist(session, user_id, profiles, fetcher, stats: SourceStats) -> N
         source = _source(session, SOURCE_FOR_BOARD[board.type])
         if source is None:
             continue
-        method, url, body = boards.list_request(board)
-        postings: list[Posting] = []
-        error = None
-        offset = 0
-        while True:
-            if body is not None:
-                body["offset"] = offset
-            res = fetcher.fetch(
-                url, source, method=method, json_body=body, max_bytes=JSON_MAX_BYTES
-            )
-            if res.status != FETCHED:
-                error = res.message or res.status
-                break
-            page = boards.parse_list(board, res.html, company.name)
-            postings.extend(page)
-            if board.type != "workday" or not page:
-                break
-            offset += len(page)
-            try:
-                total = json.loads(res.html).get("total", 0)
-            except ValueError:
-                total = 0
-            if offset >= min(total, boards.WORKDAY_MAX):
-                break
+        postings, error = _read_board(fetcher, source, board, company.name, titles)
         company.last_checked_at = utcnow()
         company.last_error = error
         company.status = "error" if error else "ok"
