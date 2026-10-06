@@ -9,6 +9,7 @@ import json
 import logging
 import re
 import unicodedata
+from urllib.parse import urlsplit
 
 from sqlmodel import Session, select
 
@@ -16,7 +17,7 @@ from jobhunter.db import utcnow
 from jobhunter.models import Source, WatchCompany
 from jobhunter.services.fetch import FETCHED, Fetcher, get_fetcher
 from jobhunter.services.mail_link import registrable
-from jobhunter.services.search.boards import Board, list_request
+from jobhunter.services.search.boards import Board, detect_board, list_request, parse_board_link
 
 log = logging.getLogger(__name__)
 BATCH = 60
@@ -141,3 +142,41 @@ def progress(session: Session, user_id: int) -> dict:
         "checked": sum(1 for c in imported if c.discovery_done),
         "found": sum(1 for c in imported if c.board_type != "unknown"),
     }
+
+
+# Career sites on the employer's own domain are fetched through these sources once recognised.
+SITE_SOURCES = {"phenom": "Phenom", "successfactors": "SuccessFactors"}
+
+
+def resolve_link(session: Session, url: str, fetcher: Fetcher) -> Board | None:
+    """The job board behind a pasted careers link. Links on a board's own domain are
+    recognised directly; otherwise the page is fetched once (robots.txt, rate limit and
+    network checks apply) to recognise a Phenom or SuccessFactors career site, whose host
+    is then added to that source's allowed domains."""
+    board = parse_board_link(url)
+    if board is not None:
+        return board
+    parts = urlsplit(url.strip())
+    host = (parts.hostname or "").lower()
+    if parts.scheme not in ("http", "https") or not host:
+        return None
+    domain = host[4:] if host.startswith("www.") else host
+    # A transient source (never saved) that allows only this one site for the check.
+    probe = Source(name="Careers link check", type="ats", domains=[domain], fetch_allowed=True)
+    for page in (url.strip(), f"https://{host}/search/?q="):
+        res = fetcher.fetch(page, probe, max_bytes=3 * 1024 * 1024)
+        if res.status == FETCHED and (board := detect_board(page, res.html)):
+            _allow_host(session, board)
+            return board
+    return None
+
+
+def _allow_host(session: Session, board: Board) -> None:
+    source = session.exec(select(Source).where(Source.name == SITE_SOURCES[board.type])).first()
+    host = board.host or ""
+    domain = host[4:] if host.startswith("www.") else host  # the fetcher compares without www.
+    if source is None or not domain or domain in (source.domains or []):
+        return
+    source.domains = [*(source.domains or []), domain]
+    session.add(source)
+    session.commit()

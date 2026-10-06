@@ -1,0 +1,7 @@
+{"status": 200, "data": {"count": 2, "positions": [
+  {"id": 101, "name": "QA Lead", "locations": ["CALGARY, Alberta, Canada", "EDMONTON, Alberta, Canada"],
+   "standardizedLocations": ["Calgary, AB, CA", "Edmonton, AB, CA"], "postedTs": 1791238879,
+   "workLocationOption": "hybrid", "positionUrl": "/careers/job/101"},
+  {"id": 102, "name": "Branch Advisor", "locations": ["TORONTO, Ontario, Canada"],
+   "workLocationOption": "onsite", "positionUrl": "/careers/job/102"}
+]}}

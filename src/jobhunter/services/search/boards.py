@@ -1,7 +1,8 @@
 """Company job boards: link parsing and readers (FR-003, FR-008).
 
-Greenhouse, Lever, Ashby and Workday (feature 003); Pinpoint, Rippling, JazzHR and Jobvite
-(feature 007). Each is read through the provider's public job feed or public careers list.
+Greenhouse, Lever, Ashby and Workday (feature 003); Pinpoint, Rippling, JazzHR, Jobvite,
+Eightfold, Phenom and SuccessFactors (feature 007). Each is read through the provider's public job
+feed, public search API or public search page, as the career site itself does.
 """
 
 import html as html_lib
@@ -9,7 +10,7 @@ import json
 import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, quote, urlsplit
 
 from defusedxml import ElementTree as ET
 from defusedxml.common import DefusedXmlException
@@ -20,7 +21,14 @@ from jobhunter.services.search.postings import Posting
 WORKDAY_PAGE_SIZE = 20
 WORKDAY_MAX = 200  # read in full up to this many jobs
 WORKDAY_SEARCH_MAX = 100  # per target-title search on larger boards
-WORKDAY_MAX_TITLES = 8
+MAX_SEARCH_TITLES = 8  # target titles searched on big paged boards
+# Paged, searchable boards: (read in full up to N jobs, else up to M results per title search)
+PAGED_LIMITS = {
+    "workday": (WORKDAY_MAX, WORKDAY_SEARCH_MAX),
+    "eightfold": (200, 50),
+    "phenom": (100, 30),
+    "successfactors": (100, 50),
+}
 
 
 @dataclass
@@ -41,6 +49,9 @@ class Board:
             "rippling": f"https://ats.rippling.com/{self.board_id}/jobs",
             "jazzhr": f"https://{self.board_id}.applytojob.com/apply",
             "jobvite": f"https://jobs.jobvite.com/{self.board_id}/jobs",
+            "eightfold": f"https://{self.board_id}.eightfold.ai/careers?domain={self.site}",
+            "phenom": f"https://{self.host}/{self.site}/search-results",
+            "successfactors": f"https://{self.host}/search/",
         }[self.type]
 
 
@@ -84,11 +95,35 @@ def parse_board_link(url: str) -> Board | None:
         return Board("jazzhr", sub)
     if host == "jobs.jobvite.com" and segments and _SLUG.match(segments[0]):
         return Board("jobvite", segments[0])
+    if sub := _company_subdomain(host, "eightfold.ai"):
+        domain = (parse_qs(parts.query).get("domain") or [f"{sub}.com"])[0].lower()
+        return Board("eightfold", sub, site=domain) if _DOMAIN.match(domain) else None
     return None
 
 
-def list_request(board: Board) -> tuple[str, str, dict | None]:
-    """(method, url, json body) for the board's job list."""
+_DOMAIN = re.compile(r"^[a-z0-9-]+(\.[a-z0-9-]+)+$")
+_PHENOM_BASE = re.compile(r'"baseUrl"\s*:\s*"https://([a-z0-9.-]+)/([a-z]{2,6}/[a-z]{2})/"')
+
+
+def detect_board(url: str, html: str) -> Board | None:
+    """Phenom and SuccessFactors career sites run on the employer's own domain, so they are
+    recognised from the page itself (fetched once when the user pastes the link)."""
+    host = (urlsplit(url).hostname or "").lower()
+    if not host or not _DOMAIN.match(host):
+        return None
+    if "phApp" in html:
+        for page_host, site in _PHENOM_BASE.findall(html):
+            if page_host == host:
+                return Board("phenom", host, host=host, site=site)
+    if "jobTitle-link" in html or "rmkcdn.successfactors.com" in html:
+        return Board("successfactors", host, host=host)
+    return None
+
+
+def list_request(board: Board, search: str = "", offset: int = 0) -> tuple[str, str, dict | None]:
+    """(method, url, json body) for one page of the board's job list; paged boards
+    (PAGED_LIMITS) also take a search text and the offset of the first result."""
+    q = quote(search)
     if board.type == "greenhouse":
         return "GET", f"https://boards-api.greenhouse.io/v1/boards/{board.board_id}/jobs", None
     if board.type == "lever":
@@ -112,10 +147,30 @@ def list_request(board: Board) -> tuple[str, str, dict | None]:
         return "GET", f"https://app.jazz.co/feeds/export/jobs/{board.board_id}", None
     if board.type == "jobvite":
         return "GET", f"https://jobs.jobvite.com/{board.board_id}/jobs", None
+    if board.type == "eightfold":
+        return (
+            "GET",
+            f"https://{board.board_id}.eightfold.ai/api/pcsx/search"
+            f"?domain={quote(board.site or '')}&query={q}&location=&start={offset}&num=10",
+            None,
+        )
+    if board.type == "phenom":
+        return (
+            "GET",
+            f"https://{board.host}/{board.site}/search-results?keywords={q}&from={offset}",
+            None,
+        )
+    if board.type == "successfactors":
+        return "GET", f"https://{board.host}/search/?q={q}&startrow={offset}", None
     return (
         "POST",
         f"https://{board.host}/wday/cxs/{board.board_id}/{board.site}/jobs",
-        {"appliedFacets": {}, "limit": WORKDAY_PAGE_SIZE, "offset": 0, "searchText": ""},
+        {
+            "appliedFacets": {},
+            "limit": WORKDAY_PAGE_SIZE,
+            "offset": offset,
+            "searchText": search,
+        },
     )
 
 
@@ -377,7 +432,124 @@ def parse_jobvite(text: str, company: str) -> list[Posting]:
     return out
 
 
+def _places(*values) -> str | None:
+    seen: list[str] = []
+    for v in values:
+        for p in v if isinstance(v, list) else [v]:
+            p = (p or "").strip() if isinstance(p, str) else ""
+            if p and p.upper() not in ("N/A", "NA", "-") and p not in seen:
+                seen.append(p)
+    return "; ".join(seen) or None
+
+
+def parse_eightfold(data: dict, board: Board, company: str) -> list[Posting]:
+    out = []
+    for j in ((data or {}).get("data") or {}).get("positions") or []:
+        path = j.get("positionUrl") or f"/careers/job/{j.get('id')}"
+        mode = _MODES.get((j.get("workLocationOption") or "").lower().replace("_local", ""))
+        place = _places(j.get("locations") or j.get("standardizedLocations"))
+        posted = j.get("postedTs")
+        out.append(
+            Posting(
+                title=j.get("name", ""),
+                url=f"https://{board.board_id}.eightfold.ai{path}",
+                company=company,
+                location=place,
+                remote=mode == "remote" or "remote" in (place or "").lower(),
+                work_mode=mode,
+                posted_at=datetime.fromtimestamp(posted, tz=UTC)
+                if isinstance(posted, int | float)
+                else None,
+            )
+        )
+    return out
+
+
+_PHENOM_DDO = re.compile(r"phApp\.ddo\s*=\s*(\{.*?\});\s*phApp\.", re.S)
+
+
+def _phenom_search(text: str) -> dict:
+    m = _PHENOM_DDO.search(text)
+    if not m:
+        return {}
+    try:
+        return json.loads(m.group(1)).get("eagerLoadRefineSearch") or {}
+    except ValueError:
+        return {}
+
+
+def parse_phenom(text: str, board: Board, company: str) -> list[Posting]:
+    out = []
+    for j in (_phenom_search(text).get("data") or {}).get("jobs") or []:
+        job_id = j.get("jobId") or j.get("reqId")
+        if not job_id:
+            continue
+        place = _places(j.get("multi_location"), j.get("location") or j.get("cityStateCountry"))
+        out.append(
+            Posting(
+                title=j.get("title", ""),
+                url=f"https://{board.host}/{board.site}/job/{quote(str(job_id))}",
+                company=company,
+                location=place,
+                description=j.get("descriptionTeaser"),
+                remote="remote" in (place or "").lower(),
+                posted_at=_ts(j.get("postedDate")),
+            )
+        )
+    return out
+
+
+_SF_ROW = re.compile(r'<tr class="data-row">(.*?)</tr>', re.S)
+_SF_LINK = re.compile(
+    r'<a\s(?=[^>]*jobTitle-link)[^>]*href="(/(?:[^"/]+/)?job/[^"]+)"[^>]*>(.*?)</a>', re.S
+)
+_SF_PLACE = re.compile(r'class="colLocation[^"]*"[^>]*>(.*?)</td>', re.S)
+_SF_TOTAL = re.compile(r"of\s*<b>\s*([\d,]+)\s*</b>")
+
+
+def parse_successfactors(text: str, board: Board, company: str) -> list[Posting]:
+    out = []
+    for row in _SF_ROW.findall(text):
+        link = _SF_LINK.search(row)
+        if not link:
+            continue
+        place_html = (_SF_PLACE.search(row) or [None, ""])[1]
+        place_html = re.sub(r"<small.*?</small>", "", place_html, flags=re.S)  # "+3 more…"
+        place = " ".join(html_lib.unescape(_TAG.sub(" ", place_html)).split())
+        out.append(
+            Posting(
+                title=" ".join(html_lib.unescape(_TAG.sub(" ", link.group(2))).split()),
+                url=f"https://{board.host}{html_lib.unescape(link.group(1))}",
+                company=company,
+                location=place or None,
+                remote="remote" in place.lower(),
+            )
+        )
+    return out
+
+
+def total_jobs(board: Board, text: str) -> int:
+    """How many jobs the board reports for this list or search (paged boards)."""
+    try:
+        if board.type == "workday":
+            return int(json.loads(text).get("total") or 0)
+        if board.type == "eightfold":
+            return int(((json.loads(text) or {}).get("data") or {}).get("count") or 0)
+    except (ValueError, AttributeError, TypeError):
+        return 0
+    if board.type == "phenom":
+        return int(_phenom_search(text).get("totalHits") or 0)
+    if board.type == "successfactors":
+        m = _SF_TOTAL.search(text)
+        return int(m.group(1).replace(",", "")) if m else 0
+    return 0
+
+
 def parse_list(board: Board, text: str, company: str) -> list[Posting]:
+    if board.type == "phenom":
+        return parse_phenom(text, board, company)
+    if board.type == "successfactors":
+        return parse_successfactors(text, board, company)
     if board.type == "jazzhr":
         return parse_jazzhr(text, company)
     if board.type == "jobvite":
@@ -396,4 +568,6 @@ def parse_list(board: Board, text: str, company: str) -> list[Posting]:
         return parse_pinpoint(data, company)
     if board.type == "rippling":
         return parse_rippling(data, company)
+    if board.type == "eightfold":
+        return parse_eightfold(data, board, company)
     return parse_workday(data, board, company)

@@ -38,6 +38,13 @@ with hundreds or thousands of open jobs; reading only the newest 200 misses most
 reporting more than 200 jobs are searched with each target-position title (up to 8 titles, 100
 results each) through the same public Workday search the career site uses.
 
+## User Story 3 - Eightfold, Phenom and SuccessFactors (Priority: P1)
+
+"Add support for Phenom, Eightfold and SuccessFactors": the career-site systems of many big
+employers (RBC, BMO, Cisco, Manulife, Boston Scientific, ATB, PayPal, Rogers, Scotiabank, Telus).
+Eightfold sites are recognised from `<company>.eightfold.ai` links; Phenom and SuccessFactors sites
+live on the employer's own domain and are recognised from the pasted page itself.
+
 ## Requirements
 
 - **FR-001**: Links MUST be recognised: `<company>.pinpointhq.com`, `ats.rippling.com/<company>`,
@@ -63,3 +70,12 @@ results each) through the same public Workday search the career site uses.
 
 - **SC-001**: Parser, link and lookup tests cover all four systems.
 - **SC-002**: The 7 watchlist companies identified in the survey are read in production.
+- **FR-008**: Eightfold MUST be read through `/api/pcsx/search`, Phenom through its search-results
+  page (job data embedded in the page) and SuccessFactors through its `/search/` page; their RSS
+  feeds under `/services/` are disallowed by robots.txt and MUST NOT be used. Sites behind a bot
+  challenge (SAP) stay unsupported.
+- **FR-009**: robots.txt MUST be evaluated per RFC 9309 (longest match wins, Allow wins ties,
+  `*` and `$` wildcards), not first match.
+- **FR-010**: A pasted link on an unknown domain MAY be fetched once (robots.txt, rate limit and
+  network checks apply) to recognise Phenom/SuccessFactors; a recognised site's host is added to
+  that source's domains (visible under Admin -> Job sources).

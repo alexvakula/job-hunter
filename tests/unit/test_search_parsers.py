@@ -202,6 +202,11 @@ def test_jobbank_feed_parsing():
         ("https://acme.applytojob.com/", ("jazzhr", "acme", None, None)),
         ("https://jobs.jobvite.com/acme/job/oAbC1", ("jobvite", "acme", None, None)),
         ("https://jobs.jobvite.com/acme/jobs", ("jobvite", "acme", None, None)),
+        (
+            "https://acme.eightfold.ai/careers?domain=acme.example&query=qa",
+            ("eightfold", "acme", None, "acme.example"),
+        ),
+        ("https://acme.eightfold.ai/careers/job/101", ("eightfold", "acme", None, "acme.com")),
     ],
 )
 def test_parse_board_link(url, expected):
@@ -302,6 +307,52 @@ def test_more_board_parsers():
     assert boards.parse_list(boards.Board("jobvite", "acme"), "<html></html>", "Acme") == []
 
 
+def test_paged_site_parsers():
+    ef_board = boards.Board("eightfold", "acme", site="acme.example")
+    text = (FIX / "eightfold_search.json").read_text()
+    ef = boards.parse_list(ef_board, text, "Acme")
+    assert ef[0].url == "https://acme.eightfold.ai/careers/job/101"
+    assert ef[0].location == "CALGARY, Alberta, Canada; EDMONTON, Alberta, Canada"
+    assert ef[0].work_mode == "hybrid" and ef[0].posted_at.year == 2026
+    assert boards.total_jobs(ef_board, text) == 2
+
+    ph_board = boards.Board("phenom", "jobs.acme.example", "jobs.acme.example", "ca/en")
+    text = (FIX / "phenom_search.html").read_text()
+    ph = boards.parse_list(ph_board, text, "Acme")
+    assert [p.url for p in ph] == [
+        "https://jobs.acme.example/ca/en/job/R-100",
+        "https://jobs.acme.example/ca/en/job/R-101",
+    ]
+    assert ph[0].location == "VANCOUVER, British Columbia, Canada; TORONTO, Ontario, Canada"
+    assert boards.total_jobs(ph_board, text) == 2
+    assert boards.parse_list(ph_board, "<html>no data</html>", "Acme") == []
+
+    sf_board = boards.Board("successfactors", "jobs.acme.example", "jobs.acme.example")
+    text = (FIX / "successfactors_search.html").read_text()
+    sf = boards.parse_list(sf_board, text, "Acme")
+    assert [(p.title, p.location, p.url) for p in sf] == [
+        ("QA Lead", "Calgary, AB, CA", "https://jobs.acme.example/job/Calgary-QA-Lead-AB/1001/"),
+        (
+            "Store Manager & Lead",
+            "Toronto, ON, CA",
+            "https://jobs.acme.example/Brand/job/Toronto-Store-Manager-ON/1002/",
+        ),
+    ]
+    assert boards.total_jobs(sf_board, text) == 2
+
+
+def test_detect_career_sites():
+    phenom = (FIX / "phenom_search.html").read_text()
+    sf = (FIX / "successfactors_search.html").read_text()
+    b = boards.detect_board("https://jobs.acme.example/ca/en/search-results", phenom)
+    assert (b.type, b.host, b.site) == ("phenom", "jobs.acme.example", "ca/en")
+    # a Phenom page from another host is not this site
+    assert boards.detect_board("https://other.example/", phenom) is None
+    b = boards.detect_board("https://jobs.acme.example/search/?q=", sf)
+    assert (b.type, b.host) == ("successfactors", "jobs.acme.example")
+    assert boards.detect_board("https://acme.example/careers", "<html>hi</html>") is None
+
+
 @pytest.mark.parametrize(
     ("kind", "url"),
     [
@@ -313,6 +364,22 @@ def test_more_board_parsers():
 )
 def test_more_board_list_requests(kind, url):
     assert boards.list_request(boards.Board(kind, "acme")) == ("GET", url, None)
+
+
+def test_paged_list_requests_take_search_and_offset():
+    req = boards.list_request
+    assert req(boards.Board("eightfold", "acme", site="acme.example"), "QA Lead", 20)[1] == (
+        "https://acme.eightfold.ai/api/pcsx/search?domain=acme.example&query=QA%20Lead"
+        "&location=&start=20&num=10"
+    )
+    assert req(boards.Board("phenom", "h", "jobs.acme.example", "ca/en"), "QA Lead", 10)[1] == (
+        "https://jobs.acme.example/ca/en/search-results?keywords=QA%20Lead&from=10"
+    )
+    sf = boards.Board("successfactors", "h", "jobs.acme.example")
+    assert req(sf, "QA Lead", 25)[1] == "https://jobs.acme.example/search/?q=QA%20Lead&startrow=25"
+    wd = boards.Board("workday", "acme", "acme.wd3.myworkdayjobs.com", "Careers")
+    method, _url, body = req(wd, "QA Lead", 40)
+    assert method == "POST" and (body["searchText"], body["offset"]) == ("QA Lead", 40)
 
 
 # --- discovery candidates ------------------------------------------------------------------

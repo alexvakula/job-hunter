@@ -6,6 +6,7 @@ import threading
 from collections.abc import Callable
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse
 from sqlalchemy import func
 from sqlmodel import Session
@@ -15,9 +16,8 @@ from jobhunter import repo
 from jobhunter.auth.sessions import csrf_protect, current_user
 from jobhunter.db import get_engine, get_session
 from jobhunter.models import UserAccount, WatchCompany
-from jobhunter.services.fetch import get_fetcher
+from jobhunter.services.fetch import Fetcher, get_fetcher
 from jobhunter.services.search import discovery
-from jobhunter.services.search.boards import parse_board_link
 from jobhunter.web import render
 
 router = APIRouter()
@@ -25,8 +25,9 @@ MAX_CSV_BYTES = 5 * 1024 * 1024
 MAX_ROWS = 10_000
 UNSUPPORTED_LINK = (
     "This careers link isn't from a job board the app can read. Supported: Greenhouse, Lever, "
-    "Ashby, Workday, Pinpoint, Rippling, JazzHR (applytojob.com) and Jobvite. On the company's "
-    "careers page, open one job and paste the link of that job page."
+    "Ashby, Workday, Pinpoint, Rippling, JazzHR (applytojob.com), Jobvite, Eightfold, Phenom and "
+    "SuccessFactors career sites. On the company's careers page, open one job and paste the "
+    "link of that job page."
 )
 BOARD_LABELS = {
     "greenhouse": "Greenhouse",
@@ -37,6 +38,9 @@ BOARD_LABELS = {
     "rippling": "Rippling",
     "jazzhr": "JazzHR",
     "jobvite": "Jobvite",
+    "eightfold": "Eightfold",
+    "phenom": "Phenom",
+    "successfactors": "SuccessFactors",
     "unknown": "—",
 }
 
@@ -77,11 +81,14 @@ def watchlist(
 
 @router.post("/watchlist", dependencies=[Depends(csrf_protect)])
 async def add_company(
-    request: Request, user: UserAccount = Depends(current_user), db: Session = Depends(get_session)
+    request: Request,
+    user: UserAccount = Depends(current_user),
+    db: Session = Depends(get_session),
+    fetcher: Fetcher = Depends(get_fetcher),
 ):
     form = await request.form()
     url = str(form.get("careers_url") or "").strip()
-    board = parse_board_link(url)
+    board = await run_in_threadpool(discovery.resolve_link, db, url, fetcher)
     if board is None:
         return _page(
             request,
@@ -232,9 +239,11 @@ async def set_link(
     request: Request,
     user: UserAccount = Depends(current_user),
     db: Session = Depends(get_session),
+    fetcher: Fetcher = Depends(get_fetcher),
 ):
     c = repo.get_owned(db, WatchCompany, company_id, user.id)
-    board = parse_board_link(str((await request.form()).get("careers_url") or ""))
+    url = str((await request.form()).get("careers_url") or "").strip()
+    board = await run_in_threadpool(discovery.resolve_link, db, url, fetcher)
     if board is None:
         return _page(request, db, user, 422, error=UNSUPPORTED_LINK)
     c.board_type, c.board_id, c.board_host, c.board_site = (

@@ -98,6 +98,9 @@ def test_more_boards_are_searched(two_users, session, app):
     qa_lead(session, uid)
     for t in ("pinpoint", "rippling", "jazzhr", "jobvite"):
         _watch(session, uid, t, name=f"Acme {t}")
+    _watch(session, uid, "eightfold", site="acme.example", name="Acme eightfold")
+    _watch(session, uid, "phenom", "h1", "jobs.acme.example", "ca/en", name="Acme phenom")
+    _watch(session, uid, "successfactors", "h2", "careers.acme.example", name="Acme sf")
     routes = standard_routes()
     routes.pop("https://www.jobbank.gc.ca/jobsearch/feed/")
     fake = FakeFetcher(routes)
@@ -117,10 +120,13 @@ def test_more_boards_are_searched(two_users, session, app):
         ).all()
     )
     assert got == [
+        ("Acme eightfold", "QA Lead"),
         ("Acme jazzhr", "QA Lead"),
         ("Acme jobvite", "QA Lead & Test Architect"),
+        ("Acme phenom", "QA Lead"),
         ("Acme pinpoint", "QA Lead"),
         ("Acme rippling", "QA Lead"),
+        ("Acme sf", "QA Lead"),
     ]
     companies = session.exec(select(WatchCompany).where(WatchCompany.user_id == uid)).all()
     assert {c.status for c in companies} == {"ok"}
@@ -184,7 +190,7 @@ def test_big_workday_boards_are_searched_by_title(two_users, session, app):
     )
     assert got == ["QA Lead", "Test Manager"]
     searches = [b["searchText"] for _m, u, b in fake.calls if "myworkdayjobs" in u and b]
-    assert searches.count("") == 10  # the first 200 jobs, then searches only
+    assert searches.count("") == 1  # the first page shows 1,500 jobs: searches only
     assert {"QA Lead", "Test Manager", "QA Manager", "Test Lead"} <= set(searches)
 
 

@@ -230,6 +230,9 @@ SOURCE_FOR_BOARD = {
     "rippling": "Rippling",
     "jazzhr": "JazzHR",
     "jobvite": "Jobvite",
+    "eightfold": "Eightfold",
+    "phenom": "Phenom",
+    "successfactors": "SuccessFactors",
 }
 
 
@@ -239,46 +242,48 @@ def _search_titles(profiles) -> list[str]:
         for t in [profile.name, *profile.synonyms]:
             if t and t.strip().lower() not in {o.lower() for o in out}:
                 out.append(t.strip())
-    return out[: boards.WORKDAY_MAX_TITLES]
+    return out[: boards.MAX_SEARCH_TITLES]
 
 
-def _read_pages(fetcher, source, board, company_name, search_text, limit):
-    """Pages of one job list; (postings, total reported by the board, error)."""
-    method, url, body = boards.list_request(board)
+def _read_pages(fetcher, source, board, company_name, search_text, limit, offset=0):
+    """Pages of one job list from `offset` until `limit` results (paged boards) or the
+    end; returns (postings, total reported by the board, error)."""
     postings: list[Posting] = []
-    offset, total = 0, 0
+    total = 0
     while True:
-        if body is not None:
-            body["offset"], body["searchText"] = offset, search_text
+        method, url, body = boards.list_request(board, search_text, offset)
         res = fetcher.fetch(url, source, method=method, json_body=body, max_bytes=JSON_MAX_BYTES)
         if res.status != FETCHED:
             return postings, total, res.message or res.status
         page = boards.parse_list(board, res.html, company_name)
         postings.extend(page)
-        if board.type != "workday" or not page:
+        if board.type not in boards.PAGED_LIMITS or not page:
             return postings, total, None
         offset += len(page)
-        try:
-            total = json.loads(res.html).get("total", 0) or total
-        except ValueError:
-            pass
+        total = boards.total_jobs(board, res.html) or total
         if offset >= min(total, limit):
             return postings, total, None
 
 
 def _read_board(fetcher, source, board, company_name, titles):
-    """A board's postings. Large Workday boards (more than WORKDAY_MAX jobs, e.g. big
+    """A board's postings. Paged boards with more jobs than their PAGED_LIMITS (big
     employers) are searched once per target title instead of being read in full."""
-    postings, total, error = _read_pages(
-        fetcher, source, board, company_name, "", boards.WORKDAY_MAX
-    )
-    if error or board.type != "workday" or total <= boards.WORKDAY_MAX or not titles:
+    limits = boards.PAGED_LIMITS.get(board.type)
+    if limits is None:
+        postings, _total, error = _read_pages(fetcher, source, board, company_name, "", 0)
         return postings, error
+    full, per_search = limits
+    postings, total, error = _read_pages(fetcher, source, board, company_name, "", 1)
+    if error or not postings:
+        return postings, error
+    if total <= full or not titles:
+        more, _total, error = _read_pages(
+            fetcher, source, board, company_name, "", full, offset=len(postings)
+        )
+        return postings + more, error
     by_url = {p.url: p for p in postings}
     for title in titles:
-        found, _total, error = _read_pages(
-            fetcher, source, board, company_name, title, boards.WORKDAY_SEARCH_MAX
-        )
+        found, _total, error = _read_pages(fetcher, source, board, company_name, title, per_search)
         if error:
             return list(by_url.values()), error
         for p in found:

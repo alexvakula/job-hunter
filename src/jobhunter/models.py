@@ -437,11 +437,12 @@ class WatchCompany(SQLModel, table=True):
     user_id: int = Field(sa_column=_fk("user_account.id"))
     name: str = Field(max_length=200)
     website: str | None = None
-    # greenhouse | lever | ashby | workday | pinpoint | rippling | jazzhr | jobvite | unknown
+    # greenhouse | lever | ashby | workday | pinpoint | rippling | jazzhr | jobvite |
+    # eightfold | phenom | successfactors | unknown
     board_type: str = "unknown"
     board_id: str | None = None
-    board_host: str | None = None  # Workday host, e.g. acme.wd3.myworkdayjobs.com
-    board_site: str | None = None  # Workday site, e.g. Careers
+    board_host: str | None = None  # e.g. acme.wd3.myworkdayjobs.com, or a Phenom/SF career site
+    board_site: str | None = None  # Workday site, Phenom path (ca/en) or Eightfold domain
     status: str = "pending"  # ok | pending | not_found | error
     paused: bool = False
     imported: bool = False

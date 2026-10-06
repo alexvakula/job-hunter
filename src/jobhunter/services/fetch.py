@@ -12,13 +12,13 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from urllib.parse import urljoin, urlsplit
-from urllib.robotparser import RobotFileParser
 
 import httpx
 from sqlmodel import Session, select
 
 from jobhunter.config import public_url
 from jobhunter.models import Source
+from jobhunter.services.robots import Robots
 
 USER_AGENT = f"JobHunter/1.0 (+{public_url()}; personal use)"
 TIMEOUT_SECONDS = 10.0
@@ -105,7 +105,7 @@ class Fetcher:
         self._min_interval = min_interval
         self._host_intervals = host_intervals or {}
         self._last_request: dict[str, float] = {}
-        self._robots: dict[str, tuple[float, RobotFileParser]] = {}  # origin -> (expires, rules)
+        self._robots: dict[str, tuple[float, Robots]] = {}  # origin -> (expires, rules)
 
     # -- guards --------------------------------------------------------------------------
 
@@ -138,7 +138,7 @@ class Fetcher:
         origin = f"{parts.scheme}://{parts.netloc}"
         cached = self._robots.get(origin)
         if cached is None or self._clock() > cached[0]:
-            parser = RobotFileParser()
+            parser = Robots()
             ttl = ROBOTS_TTL_SECONDS
             try:
                 resp = self._client.get(origin + "/robots.txt")

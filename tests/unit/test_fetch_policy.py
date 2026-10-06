@@ -203,3 +203,36 @@ def test_temporary_robots_failure_is_retried_after_an_hour(session):
     robots_status[0] = 404
     now[0] += 3601
     assert fetcher.fetch("https://jobs.lever.co/acme/1", src).status == "fetched"
+
+
+# --- robots.txt rules (RFC 9309) -------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("robots", "path", "allowed"),
+    [
+        # Eightfold career sites: Disallow everything first, then allow the public job API
+        ("User-agent: *\nDisallow: /\nAllow: /$\nAllow: /api/apply\n", "/api/apply/v2/jobs", True),
+        ("User-agent: *\nDisallow: /\nAllow: /$\nAllow: /api/apply\n", "/", True),
+        ("User-agent: *\nDisallow: /\nAllow: /$\nAllow: /api/apply\n", "/careers/x", False),
+        ("User-agent: *\nDisallow: */apply\n", "/ca/en/job/1/apply", False),
+        ("User-agent: *\nDisallow: */apply$\n", "/ca/en/apply/x", True),
+        ("User-agent: *\nDisallow: /services/\n", "/services/rss/job/", False),
+        ("User-agent: *\nDisallow: /services/\n", "/search/?q=qa", True),
+        ("User-agent: *\nAllow: /p\nDisallow: /\n", "/page", True),  # longest wins
+        ("User-agent: *\nAllow: /page\nDisallow: /page\n", "/page", True),  # tie: allow
+        ("User-agent: *\nDisallow:\n", "/anything", True),
+        ("User-agent: jobhunter\nDisallow: /\n\nUser-agent: *\nAllow: /\n", "/x", False),
+        ("User-agent: OtherBot\nUser-agent: *\nDisallow: /private\n", "/private/a", False),
+        ("User-agent: OtherBot\nDisallow: /\n", "/x", True),
+        ("# comment only\n", "/x", True),
+    ],
+)
+def test_robots_rules_follow_rfc9309(robots, path, allowed):
+    from jobhunter.services.robots import Robots
+
+    r = Robots()
+    r.parse(robots.splitlines())
+    assert (
+        r.can_fetch("JobHunter/1.0 (+https://example.org)", f"https://h.example{path}") is allowed
+    )

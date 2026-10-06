@@ -71,4 +71,7 @@ def standard_routes():
         "https://api.rippling.com/platform/api/ats/v1/board/acme/jobs": "rippling_jobs.json",
         "https://app.jazz.co/feeds/export/jobs/acme": "jazzhr_feed.xml",
         "https://jobs.jobvite.com/acme/jobs": "jobvite_jobs.html",
+        "https://acme.eightfold.ai/api/pcsx/search": "eightfold_search.json",
+        "https://jobs.acme.example/ca/en/search-results": "phenom_search.html",
+        "https://careers.acme.example/search/": "successfactors_search.html",
     }

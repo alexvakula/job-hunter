@@ -1,10 +1,10 @@
 import pytest
 from sqlmodel import select
 
-from jobhunter.models import WatchCompany
+from jobhunter.models import Source, WatchCompany
 from jobhunter.routes.watchlist import get_launcher
 from jobhunter.services.fetch import FETCH_FAILED, get_fetcher
-from tests.search_helpers import FakeFetcher
+from tests.search_helpers import FIX, FakeFetcher
 
 
 @pytest.fixture
@@ -103,6 +103,48 @@ def test_add_more_boards_by_link(two_users, session, inline, link, expected):
     assert alice.post("/watchlist", data={"careers_url": link}).status_code == 303
     (c,) = _companies(session)
     assert (c.board_type, c.board_id, c.status) == (*expected, "ok")
+
+
+def test_add_career_sites_by_link(two_users, session, inline):
+    alice, _ = two_users
+    inline.routes = {
+        "https://jobs.acme.example/ca/en/job/R-100": "phenom_search.html",
+        "https://careers.acme.example/careers": ("fetched", "<html>Welcome</html>"),
+        "https://careers.acme.example/search/": "successfactors_search.html",
+        "https://shop.example/": ("fetched", "<html>Just a shop</html>"),
+        "https://www.careers.acme.example/ca/en": (
+            "fetched",
+            (FIX / "phenom_search.html")
+            .read_text()
+            .replace("https://jobs.acme.example/", "https://www.careers.acme.example/"),
+        ),
+    }
+    for link in (
+        "https://jobs.acme.example/ca/en/job/R-100",
+        "https://careers.acme.example/careers",
+        "https://acme.eightfold.ai/careers?domain=acme.example",
+        "https://www.careers.acme.example/ca/en",
+    ):
+        assert alice.post("/watchlist", data={"careers_url": link}).status_code == 303
+    bad = alice.post("/watchlist", data={"careers_url": "https://shop.example/"})
+    assert bad.status_code == 422 and "SuccessFactors" in bad.text
+    got = [(c.board_type, c.board_host, c.board_site) for c in _companies(session)]
+    assert got == [
+        ("phenom", "jobs.acme.example", "ca/en"),
+        ("successfactors", "careers.acme.example", None),
+        ("eightfold", None, "acme.example"),
+        ("phenom", "www.careers.acme.example", "ca/en"),
+    ]
+    # the recognised sites may now be read by the daily searches
+    domains = {
+        s.name: s.domains
+        for s in session.exec(select(Source).where(Source.name.in_(["Phenom", "SuccessFactors"])))
+    }
+    assert domains == {
+        "Phenom": ["jobs.acme.example", "careers.acme.example"],  # without www., as compared
+        "SuccessFactors": ["careers.acme.example"],
+    }
+    assert ("GET", "https://careers.acme.example/search/?q=", None) in inline.calls
 
 
 def test_discovery_finds_new_boards(two_users, session, inline):
