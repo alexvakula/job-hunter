@@ -1,8 +1,8 @@
 """Company job boards: link parsing and readers (FR-003, FR-008).
 
 Greenhouse, Lever, Ashby and Workday (feature 003); Pinpoint, Rippling, JazzHR, Jobvite,
-Eightfold, Phenom and SuccessFactors (feature 007). Each is read through the provider's public job
-feed, public search API or public search page, as the career site itself does.
+Eightfold, Phenom, SuccessFactors and Oracle Cloud (feature 007). Each is read through the
+provider's public job feed, public search API or public search page, as the career site does.
 """
 
 import html as html_lib
@@ -28,7 +28,9 @@ PAGED_LIMITS = {
     "eightfold": (200, 50),
     "phenom": (100, 30),
     "successfactors": (100, 50),
+    "oracle": (200, 50),
 }
+ORACLE_PAGE_SIZE = 50
 
 
 @dataclass
@@ -52,6 +54,7 @@ class Board:
             "eightfold": f"https://{self.board_id}.eightfold.ai/careers?domain={self.site}",
             "phenom": f"https://{self.host}/{self.site}/search-results",
             "successfactors": f"https://{self.host}/search/",
+            "oracle": f"https://{self.host}/hcmUI/CandidateExperience/en/sites/{self.board_id}",
         }[self.type]
 
 
@@ -95,6 +98,8 @@ def parse_board_link(url: str) -> Board | None:
         return Board("jazzhr", sub)
     if host == "jobs.jobvite.com" and segments and _SLUG.match(segments[0]):
         return Board("jobvite", segments[0])
+    if m := _ORACLE_SITE.search(parts.path):
+        return Board("oracle", m.group(1), host=host) if _DOMAIN.match(host) else None
     if sub := _company_subdomain(host, "eightfold.ai"):
         domain = (parse_qs(parts.query).get("domain") or [f"{sub}.com"])[0].lower()
         return Board("eightfold", sub, site=domain) if _DOMAIN.match(domain) else None
@@ -102,6 +107,10 @@ def parse_board_link(url: str) -> Board | None:
 
 
 _DOMAIN = re.compile(r"^[a-z0-9-]+(\.[a-z0-9-]+)+$")
+# Oracle Recruiting Cloud career sites, on *.oraclecloud.com or the employer's own domain
+_ORACLE_SITE = re.compile(
+    r"/hcmUI/CandidateExperience/[A-Za-z-]+/sites/([A-Za-z0-9_-]{1,60})", re.I
+)
 _PHENOM_BASE = re.compile(r'"baseUrl"\s*:\s*"https://([a-z0-9.-]+)/([a-z]{2,6}/[a-z]{2})/"')
 
 
@@ -162,6 +171,16 @@ def list_request(board: Board, search: str = "", offset: int = 0) -> tuple[str, 
         )
     if board.type == "successfactors":
         return "GET", f"https://{board.host}/search/?q={q}&startrow={offset}", None
+    if board.type == "oracle":
+        keyword = f",keyword={quote(search, safe='')}" if search else ""
+        return (
+            "GET",
+            f"https://{board.host}/hcmRestApi/resources/latest/recruitingCEJobRequisitions"
+            "?onlyData=true&expand=requisitionList.secondaryLocations"
+            f"&finder=findReqs;siteNumber={board.board_id}{keyword},"
+            f"limit={ORACLE_PAGE_SIZE},offset={offset}",
+            None,
+        )
     return (
         "POST",
         f"https://{board.host}/wday/cxs/{board.board_id}/{board.site}/jobs",
@@ -180,7 +199,8 @@ def _ts(value) -> datetime | None:
     try:
         if isinstance(value, int | float):
             return datetime.fromtimestamp(value / 1000, tz=UTC)
-        return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)  # date-only values
     except (ValueError, OSError):
         return None
 
@@ -528,6 +548,39 @@ def parse_successfactors(text: str, board: Board, company: str) -> list[Posting]
     return out
 
 
+_ORACLE_MODES = {"ORA_REMOTE": "remote", "ORA_HYBRID": "hybrid", "ORA_ON_SITE": "onsite"}
+
+
+def _oracle_search(data) -> dict:
+    items = (data or {}).get("items") if isinstance(data, dict) else None
+    return items[0] if items and isinstance(items[0], dict) else {}
+
+
+def parse_oracle(data: dict, board: Board, company: str) -> list[Posting]:
+    out = []
+    for j in _oracle_search(data).get("requisitionList") or []:
+        if not j.get("Id"):
+            continue
+        place = _places(
+            j.get("PrimaryLocation"), [x.get("Name") for x in j.get("secondaryLocations") or []]
+        )
+        mode = _ORACLE_MODES.get(j.get("WorkplaceTypeCode") or "")
+        out.append(
+            Posting(
+                title=j.get("Title", ""),
+                url=f"https://{board.host}/hcmUI/CandidateExperience/en/sites/{board.board_id}"
+                f"/job/{j['Id']}",
+                company=company,
+                location=place,
+                description=(j.get("ShortDescriptionStr") or "").strip() or None,
+                remote=mode == "remote",
+                work_mode=mode,
+                posted_at=_ts(j.get("PostedDate")),
+            )
+        )
+    return out
+
+
 def total_jobs(board: Board, text: str) -> int:
     """How many jobs the board reports for this list or search (paged boards)."""
     try:
@@ -535,6 +588,8 @@ def total_jobs(board: Board, text: str) -> int:
             return int(json.loads(text).get("total") or 0)
         if board.type == "eightfold":
             return int(((json.loads(text) or {}).get("data") or {}).get("count") or 0)
+        if board.type == "oracle":
+            return int(_oracle_search(json.loads(text)).get("TotalJobsCount") or 0)
     except (ValueError, AttributeError, TypeError):
         return 0
     if board.type == "phenom":
@@ -570,4 +625,6 @@ def parse_list(board: Board, text: str, company: str) -> list[Posting]:
         return parse_rippling(data, company)
     if board.type == "eightfold":
         return parse_eightfold(data, board, company)
+    if board.type == "oracle":
+        return parse_oracle(data, board, company)
     return parse_workday(data, board, company)

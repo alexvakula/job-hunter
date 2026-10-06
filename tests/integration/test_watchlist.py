@@ -147,6 +147,25 @@ def test_add_career_sites_by_link(two_users, session, inline):
     assert ("GET", "https://careers.acme.example/search/?q=", None) in inline.calls
 
 
+def test_oracle_site_on_own_domain_is_allowed(two_users, session, inline):
+    alice, _ = two_users
+    for link in (
+        "https://abcd.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1",
+        "https://careers.acme.example/hcmUI/CandidateExperience/en/sites/careers/job/7",
+    ):
+        assert alice.post("/watchlist", data={"careers_url": link}).status_code == 303
+    got = [(c.board_type, c.board_id, c.board_host) for c in _companies(session)]
+    assert got == [
+        ("oracle", "CX_1", "abcd.fa.us2.oraclecloud.com"),
+        ("oracle", "careers", "careers.acme.example"),
+    ]
+    oracle = session.exec(select(Source).where(Source.name == "Oracle Cloud")).one()
+    session.refresh(oracle)
+    # *.oraclecloud.com was already allowed; the employer's own domain is added
+    assert oracle.domains == ["oraclecloud.com", "careers.acme.example"]
+    assert inline.calls == []  # recognised from the link alone
+
+
 def test_discovery_finds_new_boards(two_users, session, inline):
     alice, _ = two_users
     inline.routes = {

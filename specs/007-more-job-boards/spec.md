@@ -79,3 +79,8 @@ live on the employer's own domain and are recognised from the pasted page itself
 - **FR-010**: A pasted link on an unknown domain MAY be fetched once (robots.txt, rate limit and
   network checks apply) to recognise Phenom/SuccessFactors; a recognised site's host is added to
   that source's domains (visible under Admin -> Job sources).
+- **FR-011**: Oracle Recruiting Cloud sites MUST be recognised from the
+  `/hcmUI/CandidateExperience/<lang>/sites/<site>` path on any host and read through the public
+  `recruitingCEJobRequisitions` search; an employer's own domain is added to the Oracle Cloud
+  source's domains. Dayforce stays unsupported: its search API refuses requests from outside its
+  own web app (403), and working around that is not allowed (constitution V).

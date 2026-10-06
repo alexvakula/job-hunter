@@ -101,6 +101,7 @@ def test_more_boards_are_searched(two_users, session, app):
     _watch(session, uid, "eightfold", site="acme.example", name="Acme eightfold")
     _watch(session, uid, "phenom", "h1", "jobs.acme.example", "ca/en", name="Acme phenom")
     _watch(session, uid, "successfactors", "h2", "careers.acme.example", name="Acme sf")
+    _watch(session, uid, "oracle", "CX_1", "abcd.fa.us2.oraclecloud.com", name="Acme oracle")
     routes = standard_routes()
     routes.pop("https://www.jobbank.gc.ca/jobsearch/feed/")
     fake = FakeFetcher(routes)
@@ -123,6 +124,7 @@ def test_more_boards_are_searched(two_users, session, app):
         ("Acme eightfold", "QA Lead"),
         ("Acme jazzhr", "QA Lead"),
         ("Acme jobvite", "QA Lead & Test Architect"),
+        ("Acme oracle", "QA Lead"),
         ("Acme phenom", "QA Lead"),
         ("Acme pinpoint", "QA Lead"),
         ("Acme rippling", "QA Lead"),

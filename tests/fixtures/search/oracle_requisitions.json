@@ -1,0 +1,8 @@
+{"items": [{"SearchId": 1, "Keyword": null, "TotalJobsCount": 2, "SiteNumber": "CX_1",
+  "requisitionList": [
+    {"Id": "501", "Title": "QA Lead", "PostedDate": "2026-10-01", "PrimaryLocation": "Toronto, Ontario, Canada",
+     "WorkplaceTypeCode": "ORA_HYBRID", "ShortDescriptionStr": " Lead testing of our security products. ",
+     "secondaryLocations": [{"Name": "Vancouver, British Columbia, Canada", "CountryCode": "CA"}]},
+    {"Id": "502", "Title": "Sales Engineer", "PostedDate": "2026-10-02", "PrimaryLocation": "Paris, France",
+     "WorkplaceTypeCode": "ORA_ON_SITE", "secondaryLocations": []}
+  ]}]}

@@ -207,6 +207,14 @@ def test_jobbank_feed_parsing():
             ("eightfold", "acme", None, "acme.example"),
         ),
         ("https://acme.eightfold.ai/careers/job/101", ("eightfold", "acme", None, "acme.com")),
+        (
+            "https://abcd.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/501",
+            ("oracle", "CX_1", "abcd.fa.us2.oraclecloud.com", None),
+        ),
+        (
+            "https://careers.acme.example/hcmUI/CandidateExperience/en/sites/careers",
+            ("oracle", "careers", "careers.acme.example", None),
+        ),
     ],
 )
 def test_parse_board_link(url, expected):
@@ -339,6 +347,26 @@ def test_paged_site_parsers():
         ),
     ]
     assert boards.total_jobs(sf_board, text) == 2
+
+
+def test_oracle_parser():
+    board = boards.Board("oracle", "CX_1", "abcd.fa.us2.oraclecloud.com")
+    text = (FIX / "oracle_requisitions.json").read_text()
+    ps = boards.parse_list(board, text, "Acme")
+    assert ps[0].url == (
+        "https://abcd.fa.us2.oraclecloud.com/hcmUI/CandidateExperience/en/sites/CX_1/job/501"
+    )
+    assert ps[0].location == "Toronto, Ontario, Canada; Vancouver, British Columbia, Canada"
+    assert ps[0].work_mode == "hybrid" and ps[1].work_mode == "onsite"
+    assert ps[0].description == "Lead testing of our security products."
+    assert ps[0].posted_at.tzinfo is not None  # date-only values are taken as UTC
+    assert boards.total_jobs(board, text) == 2
+    assert boards.list_request(board, "QA Lead", 50)[1] == (
+        "https://abcd.fa.us2.oraclecloud.com/hcmRestApi/resources/latest/"
+        "recruitingCEJobRequisitions?onlyData=true&expand=requisitionList.secondaryLocations"
+        "&finder=findReqs;siteNumber=CX_1,keyword=QA%20Lead,limit=50,offset=50"
+    )
+    assert boards.parse_list(board, "{}", "Acme") == []
 
 
 def test_detect_career_sites():

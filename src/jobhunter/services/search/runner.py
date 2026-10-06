@@ -233,6 +233,7 @@ SOURCE_FOR_BOARD = {
     "eightfold": "Eightfold",
     "phenom": "Phenom",
     "successfactors": "SuccessFactors",
+    "oracle": "Oracle Cloud",
 }
 
 

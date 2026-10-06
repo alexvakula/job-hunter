@@ -28,18 +28,21 @@ Company watchlist: public job boards of chosen employers
   Phenom       the employer's own career site, e.g. jobs.rbc.com/ca/en   its public search page
   SuccessFactors the employer's own career site, e.g. jobs.rogers.com    its public search page
                (the sites' RSS feeds are under /services/, which their robots.txt disallows)
+  Oracle Cloud https://<host>/hcmUI/CandidateExperience/en/sites/<site>   its public job search
+               (hcmRestApi), on *.oraclecloud.com or the employer's own domain
   How:   paste a company's careers link (a link to any one job works too; Phenom and
          SuccessFactors sites are recognised from that one page), or import a CSV of
          companies; boards on Greenhouse, Lever, Ashby, Pinpoint, Rippling and JazzHR are found
          through their public feeds (never the companies' own websites)
   Big employers (more open jobs than can be read in full, e.g. Medtronic, TD, RBC) are
          searched with each target-position title instead (Workday, Eightfold, Phenom,
-         SuccessFactors). Jobs listed as
+         SuccessFactors, Oracle Cloud). Jobs listed as
          "3 Locations" whose title fits are looked up once to get their places and description.
   Rules: official public feeds or the public search the career site itself uses; robots.txt
          is read as RFC 9309 defines it (most specific rule wins); at most 1 request per second per API
          host, 5 seconds between requests to the same careers site
-  Not supported: Oracle Cloud, Dayforce, iCIMS, Taleo, sites behind a bot challenge (e.g. SAP)
+  Not supported: Dayforce (its job search refuses requests from outside its own app), iCIMS,
+         Taleo, sites behind a bot challenge (e.g. SAP)
          and companies' own sites (e.g. GlobalLogic);
          add those jobs by pasting a link or the posting text
 

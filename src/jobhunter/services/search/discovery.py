@@ -145,7 +145,7 @@ def progress(session: Session, user_id: int) -> dict:
 
 
 # Career sites on the employer's own domain are fetched through these sources once recognised.
-SITE_SOURCES = {"phenom": "Phenom", "successfactors": "SuccessFactors"}
+SITE_SOURCES = {"phenom": "Phenom", "successfactors": "SuccessFactors", "oracle": "Oracle Cloud"}
 
 
 def resolve_link(session: Session, url: str, fetcher: Fetcher) -> Board | None:
@@ -155,6 +155,8 @@ def resolve_link(session: Session, url: str, fetcher: Fetcher) -> Board | None:
     is then added to that source's allowed domains."""
     board = parse_board_link(url)
     if board is not None:
+        if board.type in SITE_SOURCES:  # e.g. an Oracle site on the employer's own domain
+            _allow_host(session, board)
         return board
     parts = urlsplit(url.strip())
     host = (parts.hostname or "").lower()
@@ -175,7 +177,8 @@ def _allow_host(session: Session, board: Board) -> None:
     source = session.exec(select(Source).where(Source.name == SITE_SOURCES[board.type])).first()
     host = board.host or ""
     domain = host[4:] if host.startswith("www.") else host  # the fetcher compares without www.
-    if source is None or not domain or domain in (source.domains or []):
+    known = source.domains or [] if source else []
+    if source is None or not domain or any(domain == d or domain.endswith("." + d) for d in known):
         return
     source.domains = [*(source.domains or []), domain]
     session.add(source)

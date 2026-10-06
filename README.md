@@ -24,8 +24,8 @@ A small, self-hosted job-search tracker for one family, running at
   external sites are ever stored),
 - get **automatic searches** every morning at 06:00: Job Bank (official feed) for each target
   position, and a **company watchlist** checked through the public job boards of Greenhouse, Lever,
-  Ashby, Workday, Pinpoint, Rippling, JazzHR, Jobvite, Eightfold, Phenom and
-  SuccessFactors; lists such as ABTEC 5000 can be imported as CSV and their boards are found
+  Ashby, Workday, Pinpoint, Rippling, JazzHR, Jobvite, Eightfold, Phenom, SuccessFactors and
+  Oracle Cloud; lists such as ABTEC 5000 can be imported as CSV and their boards are found
   automatically; results are scored 0–100 and sorted best-first in Suggestions,
 - keep their original resume (DOCX/PDF), and set up and test their sender email.
 
