@@ -529,13 +529,14 @@ class ClaudeJob(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     user_id: int = Field(sa_column=_fk("user_account.id"))
-    kind: str  # find_jobs | fit_rank | tailor | import
+    kind: str  # find_jobs | fit_rank | tailor | import | prep
     status: str = "queued"  # queued | running | done | failed
     payload: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     result: dict | None = Field(default=None, sa_column=Column(JSON, nullable=True))
     summary: str | None = None
     error: str | None = None
     cost_usd: float | None = None
+    model: str | None = None  # the Claude model the job ran with (feature 007)
     created_at: datetime = Field(default_factory=utcnow)
     started_at: datetime | None = None
     finished_at: datetime | None = None

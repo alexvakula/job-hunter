@@ -184,6 +184,10 @@ def test_tailor_with_claude_stays_honest(admin, session):
     alice.post(f"/jobs/{job_id}/apply/claude")
     [job] = _run_queue(session)
     assert job.status == "done" and "Kubernetes" in job.summary
+    # writing for employers uses the strongest model
+    argv = fake.calls[-1]["argv"]
+    assert argv[argv.index("--model") + 1] == "claude-opus-5-5" == job.model
+    assert "Opus 5.5" in alice.get("/claude").text
     t = session.exec(select(TailoredResume)).one()
     texts = [b["text"] for e in t.experience for b in e["bullets"]]
     assert "Built a Selenium/Python test automation framework (1,200 cases)." in texts

@@ -6,6 +6,7 @@ from fastapi import Request
 from fastapi.templating import Jinja2Templates
 
 from jobhunter.db import to_local
+from jobhunter.services.claude import cli as claude_cli
 from jobhunter.services.statuses import STATUS_LABELS
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
@@ -42,6 +43,7 @@ def _local_dt(value, fmt: str = "%Y-%m-%d %H:%M") -> str:
 templates = Jinja2Templates(directory=str(TEMPLATE_DIR), context_processors=[_context])
 templates.env.filters["local_dt"] = _local_dt
 templates.env.globals["status_labels"] = STATUS_LABELS
+templates.env.globals["model_name"] = claude_cli.model_name
 
 
 def render(request: Request, name: str, status_code: int = 200, **context):

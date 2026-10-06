@@ -110,6 +110,7 @@ def find_jobs(session: Session, user: UserAccount, job: ClaudeJob) -> Outcome:
         ["WebSearch", "WebFetch"],
         FIND_TIMEOUT,
         max_turns=25,
+        model=cli.model_for("find_jobs"),
     )
     added, new_ids = 0, []
     for item in out.data["jobs"]:
@@ -227,7 +228,9 @@ def fit_rank(session: Session, user: UserAccount, job: ClaudeJob) -> Outcome:
         + "\n\nPOSTINGS (JSON):\n"
         + json.dumps(postings, ensure_ascii=False)
     )
-    out = cli.run(prompt, RANK_SCHEMA, [], OTHER_TIMEOUT, max_turns=3)
+    out = cli.run(
+        prompt, RANK_SCHEMA, [], OTHER_TIMEOUT, max_turns=3, model=cli.model_for("fit_rank")
+    )
     by_id = {s.id: s for s in batch}
     ranked = 0
     for r in out.data["rankings"]:
@@ -298,7 +301,9 @@ def tailor_job(session: Session, user: UserAccount, job: ClaudeJob) -> Outcome:
         f"\n\nKEYWORDS: {', '.join(keywords)}\n\nRESUME (JSON):\n"
         + json.dumps(resume_json, ensure_ascii=False)[:RESUME_LIMIT]
     )
-    out = cli.run(prompt, TAILOR_SCHEMA, [], OTHER_TIMEOUT, max_turns=3)
+    out = cli.run(
+        prompt, TAILOR_SCHEMA, [], OTHER_TIMEOUT, max_turns=3, model=cli.model_for("tailor")
+    )
 
     t = session.exec(
         select(TailoredResume).where(
@@ -427,7 +432,9 @@ def import_resume(session: Session, user: UserAccount, job: ClaudeJob) -> Outcom
         "not improve, summarise or invent anything; use empty strings or lists for missing "
         f"parts).\n\nRESUME TEXT:\n{text[:RESUME_LIMIT]}"
     )
-    out = cli.run(prompt, IMPORT_SCHEMA, [], OTHER_TIMEOUT, max_turns=3)
+    out = cli.run(
+        prompt, IMPORT_SCHEMA, [], OTHER_TIMEOUT, max_turns=3, model=cli.model_for("import")
+    )
     master = model.normalise(out.data)
     return Outcome(
         f"{len(master['experience'])} jobs, {len(master['skills'])} skills read. "

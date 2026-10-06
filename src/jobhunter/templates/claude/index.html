@@ -10,14 +10,18 @@
   <p class="muted">Claude runs one job at a time in the background, may only search and read the web for “Find jobs” (never LinkedIn, Indeed or Glassdoor pages), and uses only your master resume as facts. Only you (admin) can use it.</p>
   <form method="post" action="/claude/find" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn"{% if not token %} disabled{% endif %}>Find jobs with Claude</button></form>
   <form method="post" action="/claude/rank" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn btn-secondary"{% if not token %} disabled{% endif %}>Rank new suggestions</button></form>
+  <details><summary class="link">Models used</summary>
+    <table class="compact"><tbody>{% for label, name in models %}<tr><td>{{ label }}</td><td>{{ name }}</td></tr>{% endfor %}</tbody></table>
+    <p class="muted">Cheaper models search and score; the strongest writes your resume and cover letter. Change one in <code>.env</code>, e.g. <code>CLAUDE_MODEL_TAILOR=claude-sonnet-5-5</code>, then restart.</p>
+  </details>
 </section>
 <h2>Recent jobs</h2>
 {% if jobs %}
 <div class="table-wrap"><table>
-  <thead><tr><th>Kind</th><th>Status</th><th>Queued</th><th>Result</th></tr></thead>
+  <thead><tr><th>Kind</th><th>Status</th><th>Model</th><th>Queued</th><th>Result</th></tr></thead>
   <tbody>{% for j in jobs %}
   <tr><td><a href="/claude/jobs/{{ j.id }}">{{ labels[j.kind] }}</a></td><td><span class="badge">{{ j.status }}</span></td>
-      <td class="muted">{{ j.created_at|local_dt }}</td><td>{{ j.error or j.summary or '' }}</td></tr>
+      <td class="muted">{{ model_name(j.model) }}</td><td class="muted">{{ j.created_at|local_dt }}</td><td>{{ j.error or j.summary or '' }}</td></tr>
   {% endfor %}</tbody>
 </table></div>
 {% else %}<p class="card muted">No Claude jobs yet.</p>{% endif %}

@@ -76,7 +76,14 @@ def prep_job(session: Session, user: UserAccount, job: ClaudeJob) -> Outcome:
         f"{(target.description or '')[:DESCRIPTION_LIMIT]}\n\nRESUME (JSON):\n"
         + json.dumps(resume_json, ensure_ascii=False)[:RESUME_LIMIT]
     )
-    out = cli.run(prompt, PREP_SCHEMA, ["WebSearch", "WebFetch"], FIND_TIMEOUT, max_turns=15)
+    out = cli.run(
+        prompt,
+        PREP_SCHEMA,
+        ["WebSearch", "WebFetch"],
+        FIND_TIMEOUT,
+        max_turns=15,
+        model=cli.model_for("prep"),
+    )
     data = out.data
     for q in data["questions"]:
         q["resume_refs"] = [r for r in q["resume_refs"] if r in refs]  # drop unknown refs

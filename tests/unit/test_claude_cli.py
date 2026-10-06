@@ -75,3 +75,18 @@ def test_missing_token_or_binary(fake_claude, db_path, monkeypatch):  # noqa: F8
     monkeypatch.setenv("CLAUDE_BIN", "/nonexistent/claude")
     with pytest.raises(cli.ClaudeError, match="not installed"):
         cli.run("x", SCHEMA, [], timeout=5)
+
+
+def test_models_per_job_kind(fake_claude, db_path, monkeypatch):  # noqa: F811
+    assert cli.model_for("find_jobs") == cli.model_for("fit_rank") == "claude-haiku-4-5-20251001"
+    assert cli.model_for("import") == cli.model_for("prep") == "claude-sonnet-5-5"
+    assert cli.model_for("tailor") == "claude-opus-5-5"
+    monkeypatch.setenv("CLAUDE_MODEL_TAILOR", "claude-sonnet-5-5")
+    assert cli.model_for("tailor") == "claude-sonnet-5-5"
+    monkeypatch.setenv("CLAUDE_MODEL_FIND_JOBS", "--dangerously-skip-permissions")
+    assert cli.model_for("find_jobs") == "claude-haiku-4-5-20251001"  # not a model id: ignored
+    assert cli.model_name("claude-opus-5-5") == "Opus 5.5" and cli.model_name(None) == ""
+    fake_claude.respond({"n": 1})
+    cli.run("x", SCHEMA, [], timeout=20, model=cli.model_for("tailor"))
+    argv = fake_claude.calls[0]["argv"]
+    assert argv[argv.index("--model") + 1] == "claude-sonnet-5-5"

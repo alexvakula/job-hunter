@@ -44,6 +44,9 @@ def _page(db, user) -> dict:
         "token": cli.token_configured(),
         "installed": cli.binary() is not None,
         "labels": KIND_LABELS,
+        "models": [
+            (KIND_LABELS.get(k, k), cli.model_name(cli.model_for(k))) for k in cli.DEFAULT_MODELS
+        ],
     }
 
 

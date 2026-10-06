@@ -68,6 +68,7 @@ def process_next(session: Session) -> ClaudeJob | None:
         if job is None:
             return None
         job.status, job.started_at = "running", utcnow()
+        job.model = cli.model_for(job.kind) if job.kind in cli.DEFAULT_MODELS else None
         session.add(job)
         session.commit()
         try:

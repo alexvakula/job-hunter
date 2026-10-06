@@ -9,6 +9,7 @@ group. The structured result is validated again here; anything unexpected is an 
 import json
 import logging
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -44,6 +45,40 @@ _AUTH_HINTS = (
     "credential",
     "token",
 )
+
+
+# Model per job kind: cheaper ones for searching and scoring, the strongest for writing what
+# employers read. Each can be overridden in .env, e.g. CLAUDE_MODEL_TAILOR=claude-sonnet-5-5.
+DEFAULT_MODELS = {
+    "find_jobs": "claude-haiku-4-5-20251001",
+    "fit_rank": "claude-haiku-4-5-20251001",
+    "import": "claude-sonnet-5-5",
+    "prep": "claude-sonnet-5-5",
+    "tailor": "claude-opus-5-5",
+}
+MODEL_NAMES = {
+    "claude-haiku-4-5-20251001": "Haiku 4.5",
+    "claude-sonnet-5-5": "Sonnet 5.5",
+    "claude-opus-5-5": "Opus 5.5",
+}
+
+
+def model_name(model: str | None) -> str:
+    return MODEL_NAMES.get(model or "", model or "")
+
+
+_MODEL_ID = re.compile(r"^[a-z0-9][a-z0-9.\-]{1,63}$")
+
+
+def model_for(kind: str) -> str:
+    """The model for a job kind: CLAUDE_MODEL_<KIND> from the environment if it is a valid
+    model id, else the default."""
+    configured = os.environ.get(f"CLAUDE_MODEL_{kind.upper()}", "").strip()
+    if configured and _MODEL_ID.match(configured):
+        return configured
+    if configured:
+        log.warning("ignoring invalid CLAUDE_MODEL_%s", kind.upper())
+    return DEFAULT_MODELS[kind]
 
 
 class ClaudeError(Exception):
@@ -89,7 +124,9 @@ def _env() -> dict[str, str]:
     return env
 
 
-def arguments(exe: str, schema: dict, tools: list[str], max_turns: int) -> list[str]:
+def arguments(
+    exe: str, schema: dict, tools: list[str], max_turns: int, model: str | None = None
+) -> list[str]:
     args = [
         exe,
         "-p",
@@ -106,6 +143,8 @@ def arguments(exe: str, schema: dict, tools: list[str], max_turns: int) -> list[
         "--max-turns",
         str(max_turns),
     ]
+    if model:
+        args += ["--model", model]
     if tools:
         args += ["--allowedTools", ",".join(tools)]
     if "WebFetch" in tools:
@@ -120,7 +159,14 @@ def _explain(text: str) -> str:
     return "Claude returned an error: " + (text or "unknown error").strip()[:300]
 
 
-def run(prompt: str, schema: dict, tools: list[str], timeout: int, max_turns: int = 8) -> CliResult:
+def run(
+    prompt: str,
+    schema: dict,
+    tools: list[str],
+    timeout: int,
+    max_turns: int = 8,
+    model: str | None = None,
+) -> CliResult:
     if not token_configured():
         raise ClaudeError(TOKEN_HELP)
     exe = binary()
@@ -128,7 +174,7 @@ def run(prompt: str, schema: dict, tools: list[str], timeout: int, max_turns: in
         raise ClaudeError("Claude CLI not installed in the container.")
     with tempfile.TemporaryDirectory(prefix="claude-run-") as workdir:
         proc = subprocess.Popen(  # noqa: S603 - fixed argv, no shell, trusted binary
-            arguments(exe, schema, tools, max_turns),
+            arguments(exe, schema, tools, max_turns, model),
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
