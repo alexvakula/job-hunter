@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Job Hunter{% endblock %} · Job Hunter</title>
-  <link rel="stylesheet" href="/static/app.css">
+  <link rel="stylesheet" href="/static/app.css?v=20261006">
   <script src="/static/vendor/htmx.min.js" defer></script>
   {% block head %}{% endblock %}
   <script src="/static/app.js" defer></script>
@@ -33,7 +33,7 @@
     </div>
   </header>
   {% endif %}
-  <main class="container">
+  <main class="container{% block main_class %}{% endblock %}">
     {% if flash %}<p class="flash" role="status">{{ flash }}</p>{% endif %}
     {% block content %}{% endblock %}
   </main>

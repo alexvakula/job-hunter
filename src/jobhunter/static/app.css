@@ -37,12 +37,14 @@ th, td { text-align: left; padding: 8px; border-bottom: 1px solid var(--line); v
 .description { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 40rem; overflow-y: auto; }
 .timeline { list-style: none; padding: 0; margin: 0; }
 .timeline li { padding: 6px 0; border-bottom: 1px dashed var(--line); }
-.board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(220px, 1fr); gap: 12px; overflow-x: auto; padding-bottom: 8px; }
+.container-wide { max-width: none; }
+.board { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(180px, 1fr); gap: 10px; overflow-x: auto; padding-bottom: 8px; }
 .column { background: #eceff3; border-radius: 8px; padding: 8px; min-height: 200px; }
 .column h2 { font-size: .95rem; margin: 4px 4px 8px; display: flex; justify-content: space-between; }
 .column ul { list-style: none; padding: 0; margin: 0; min-height: 150px; }
 .kcard { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 8px; margin-bottom: 8px; cursor: grab; }
 .kcard .t { font-weight: 600; }
+.kcard div { overflow-wrap: anywhere; }
 .kcard.sortable-ghost { opacity: .4; }
 .column.closed { background: #f1ecec; }
 @media (max-width: 640px) { .container { padding: 12px; } .topbar { gap: 8px; } }
