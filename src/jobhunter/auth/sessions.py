@@ -175,6 +175,15 @@ def current_user(auth: Auth = Depends(get_auth)) -> UserAccount:
     return auth.user
 
 
+def require_claude(auth: Auth = Depends(get_auth)) -> UserAccount:
+    """Claude pages: users with their own Claude token; the admin always (to see the setup hint)."""
+    from jobhunter.services.claude.queue import enabled_for
+
+    if not (auth.user.is_admin or enabled_for(auth.user)):
+        raise Forbidden()
+    return auth.user
+
+
 def require_admin(auth: Auth = Depends(get_auth)) -> UserAccount:
     if not auth.user.is_admin:
         raise Forbidden()

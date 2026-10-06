@@ -1,18 +1,19 @@
-"""Claude pages and buttons (feature 005). Admin only (constitution VIII v2.0.2)."""
+"""Claude pages and buttons (feature 005), for users with their own Claude token (constitution
+VIII)."""
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import RedirectResponse
 from sqlmodel import Session, select
 
 from jobhunter import repo
-from jobhunter.auth.sessions import csrf_protect, require_admin
+from jobhunter.auth.sessions import csrf_protect, require_claude
 from jobhunter.db import get_session
 from jobhunter.models import ClaudeJob, Job, ResumeFile, UserAccount
 from jobhunter.services.claude import cli, queue
 from jobhunter.services.resume import model
 from jobhunter.web import is_htmx, render
 
-router = APIRouter(dependencies=[Depends(require_admin)])
+router = APIRouter(dependencies=[Depends(require_claude)])
 KIND_LABELS = {
     "find_jobs": "Find jobs",
     "fit_rank": "Fit ranking",
@@ -41,7 +42,7 @@ def _page(db, user) -> dict:
     ).all()
     return {
         "jobs": jobs,
-        "token": cli.token_configured(),
+        "token": cli.token_configured(user),
         "installed": cli.binary() is not None,
         "labels": KIND_LABELS,
         "models": [
@@ -52,7 +53,9 @@ def _page(db, user) -> dict:
 
 @router.get("/claude")
 def claude_page(
-    request: Request, user: UserAccount = Depends(require_admin), db: Session = Depends(get_session)
+    request: Request,
+    user: UserAccount = Depends(require_claude),
+    db: Session = Depends(get_session),
 ):
     return render(request, "claude/index.html", **_page(db, user))
 
@@ -61,7 +64,7 @@ def claude_page(
 def claude_job(
     claude_job_id: int,
     request: Request,
-    user: UserAccount = Depends(require_admin),
+    user: UserAccount = Depends(require_claude),
     db: Session = Depends(get_session),
 ):
     job = repo.get_owned(db, ClaudeJob, claude_job_id, user.id)
@@ -71,14 +74,18 @@ def claude_job(
 
 @router.post("/claude/find", dependencies=[Depends(csrf_protect)])
 def find(
-    request: Request, user: UserAccount = Depends(require_admin), db: Session = Depends(get_session)
+    request: Request,
+    user: UserAccount = Depends(require_claude),
+    db: Session = Depends(get_session),
 ):
     return _queue(db, user, "find_jobs", {}, request)
 
 
 @router.post("/claude/rank", dependencies=[Depends(csrf_protect)])
 def rank(
-    request: Request, user: UserAccount = Depends(require_admin), db: Session = Depends(get_session)
+    request: Request,
+    user: UserAccount = Depends(require_claude),
+    db: Session = Depends(get_session),
 ):
     return _queue(db, user, "fit_rank", {}, request)
 
@@ -87,7 +94,7 @@ def rank(
 def tailor(
     job_id: int,
     request: Request,
-    user: UserAccount = Depends(require_admin),
+    user: UserAccount = Depends(require_claude),
     db: Session = Depends(get_session),
 ):
     job = repo.get_owned(db, Job, job_id, user.id)
@@ -98,7 +105,7 @@ def tailor(
 def prep(
     job_id: int,
     request: Request,
-    user: UserAccount = Depends(require_admin),
+    user: UserAccount = Depends(require_claude),
     db: Session = Depends(get_session),
 ):
     job = repo.get_owned(db, Job, job_id, user.id)
@@ -107,7 +114,9 @@ def prep(
 
 @router.post("/resume/claude-import", dependencies=[Depends(csrf_protect)])
 def claude_import(
-    request: Request, user: UserAccount = Depends(require_admin), db: Session = Depends(get_session)
+    request: Request,
+    user: UserAccount = Depends(require_claude),
+    db: Session = Depends(get_session),
 ):
     current = db.exec(
         select(ResumeFile).where(ResumeFile.user_id == user.id, ResumeFile.is_current.is_(True))
@@ -121,7 +130,7 @@ def claude_import(
 def open_import(
     claude_job_id: int,
     request: Request,
-    user: UserAccount = Depends(require_admin),
+    user: UserAccount = Depends(require_claude),
     db: Session = Depends(get_session),
 ):
     """Open the Claude import result in the editor, unsaved (FR-009)."""

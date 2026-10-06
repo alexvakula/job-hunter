@@ -6,6 +6,7 @@ directory, a minimal environment (no other secrets), and a hard timeout that kil
 group. The structured result is validated again here; anything unexpected is an error.
 """
 
+import contextvars
 import json
 import logging
 import os
@@ -14,6 +15,7 @@ import shutil
 import signal
 import subprocess
 import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -24,8 +26,9 @@ from jobhunter.config import get_settings
 log = logging.getLogger(__name__)
 TOKEN_ENV = "CLAUDE_CODE_OAUTH_TOKEN"  # noqa: S105 - the variable name, not a secret
 _HELP = (
-    "Claude token missing or expired. Run `claude setup-token` on your computer and put "
-    "the token in /opt/docker/job-hunter/.env as CLAUDE_CODE_OAUTH_TOKEN, then restart."
+    "Claude token missing or expired. Sign in with `claude setup-token` and put the token in "
+    "/opt/docker/job-hunter/.env as CLAUDE_CODE_OAUTH_TOKEN_<USERNAME> (the admin may use "
+    "CLAUDE_CODE_OAUTH_TOKEN), then restart."
 )
 TOKEN_HELP = _HELP
 BLOCKED_FETCH_DOMAINS = (
@@ -91,8 +94,47 @@ class CliResult:
     cost_usd: float | None
 
 
-def token_configured() -> bool:
-    return bool(os.environ.get(TOKEN_ENV))
+def token_key(username: str) -> str:
+    """The .env variable holding a user's own token, e.g. CLAUDE_CODE_OAUTH_TOKEN_SAM."""
+    return f"{TOKEN_ENV}_" + re.sub(r"[^A-Z0-9]", "_", username.upper())
+
+
+def token_for(user) -> str | None:
+    """A user's own Claude token. Tokens are never shared between users: the admin's
+    CLAUDE_CODE_OAUTH_TOKEN only ever serves the admin's own jobs (constitution VIII)."""
+    if user is None:
+        return None
+    token = os.environ.get(token_key(user.username))
+    if not token and user.is_admin:
+        token = os.environ.get(TOKEN_ENV)
+    return token or None
+
+
+def token_configured(user=None) -> bool:
+    if user is None:
+        return bool(os.environ.get(TOKEN_ENV))
+    return token_for(user) is not None
+
+
+# The account (token, config folder) the current Claude job runs as; set by the queue.
+_account: contextvars.ContextVar[tuple[str, str] | None] = contextvars.ContextVar(
+    "claude_account", default=None
+)
+
+
+@contextmanager
+def account(user):
+    """Run the enclosed Claude calls with this user's own token and CLI config folder."""
+    marker = _account.set((token_for(user) or "", re.sub(r"[^a-z0-9_-]", "_", user.username)))
+    try:
+        yield
+    finally:
+        _account.reset(marker)
+
+
+def _current_token() -> str:
+    current = _account.get()
+    return current[0] if current is not None else os.environ.get(TOKEN_ENV, "")
 
 
 def binary() -> str | None:
@@ -107,13 +149,14 @@ def config_dir() -> Path:
 
 
 def _env() -> dict[str, str]:
-    cfg = config_dir()
+    current = _account.get()
+    cfg = config_dir() / current[1] if current is not None else config_dir()
     cfg.mkdir(parents=True, exist_ok=True)
     env = {
         "PATH": os.environ.get("PATH", "/usr/local/bin:/usr/bin:/bin"),
         "HOME": str(cfg),
         "CLAUDE_CONFIG_DIR": str(cfg),
-        TOKEN_ENV: os.environ.get(TOKEN_ENV, ""),
+        TOKEN_ENV: _current_token(),
         "DISABLE_AUTOUPDATER": "1",
         "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
         "LANG": "C.UTF-8",
@@ -167,7 +210,7 @@ def run(
     max_turns: int = 8,
     model: str | None = None,
 ) -> CliResult:
-    if not token_configured():
+    if not _current_token():
         raise ClaudeError(TOKEN_HELP)
     exe = binary()
     if exe is None:

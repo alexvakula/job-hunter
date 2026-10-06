@@ -14,7 +14,9 @@ search, Claude fit ranking; P2: Claude-assisted resume import and tailoring).
 ### Session 2026-10-05
 
 - Q: Who may use Claude features? → A: The admin only, on the admin's own Claude subscription token
-  (constitution VIII amended to v2.0.2).
+  (constitution VIII amended to v2.0.2). Updated 2026-10-06 (constitution v2.1.0): every user
+  who has their own Claude token (`CLAUDE_CODE_OAUTH_TOKEN_<USERNAME>`); each user's jobs run
+  only on their own token.
 - Q: Which features? → A: Find jobs (web search), fit ranking, tailoring + cover letter, resume
   import.
 - Q: How is the CLI run? → A: Verified against Claude Code 2.1.290: `claude -p` with

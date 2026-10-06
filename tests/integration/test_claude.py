@@ -273,3 +273,45 @@ def test_daily_queue(admin, session, monkeypatch):
     session.commit()
     scheduler.queue_daily_claude(session)
     assert session.exec(select(ClaudeJob)).all() == []
+
+
+def test_each_user_runs_on_their_own_token(admin, session, monkeypatch):
+    alice, bob, alice_id, fake = admin
+    # bob has no token of his own: no Claude for him, never the admin's token
+    assert bob.get("/claude").status_code == 403
+    assert "/claude" not in bob.get("/jobs").text
+    assert bob.post("/claude/find").status_code == 403
+    # once bob signs in with his own account, Claude is his, on his token
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_BOB", "sk-ant-oat-bob-token")
+    assert bob.get("/claude").status_code == 200 and 'href="/claude"' in bob.get("/jobs").text
+    bob_id = session.exec(select(UserAccount.id).where(UserAccount.username == "bob")).one()
+    qa_lead(session, bob_id)
+    assert bob.post("/resume", data=_master_form()).status_code == 303
+    fake.respond({"jobs": []})
+    assert bob.post("/claude/find").status_code == 303
+    alice.post("/claude/find")
+    jobs = _run_queue(session)
+    by_user = {j.user_id: j for j in jobs}
+    assert set(by_user) == {alice_id, bob_id}
+    assert {j.status for j in jobs} == {"done"}, [j.error for j in jobs]
+    tokens = {c["token"] for c in fake.calls}
+    assert tokens == {"sk-ant-oat-bob-token", "sk-ant-oat-test-token"}
+    bob_call = next(c for c in fake.calls if c["token"] == "sk-ant-oat-bob-token")
+    assert bob_call["config_dir"].endswith("/bob")  # separate CLI settings per user
+    # each sees only their own Claude jobs
+    assert bob.get(f"/claude/jobs/{by_user[alice_id].id}").status_code == 404
+    assert alice.get(f"/claude/jobs/{by_user[bob_id].id}").status_code == 404
+
+
+def test_non_admin_token_is_never_the_admins(monkeypatch):
+    from jobhunter.models import UserAccount as U
+    from jobhunter.services.claude import cli
+
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "admin-token")
+    monkeypatch.delenv("CLAUDE_CODE_OAUTH_TOKEN_KIM", raising=False)
+    admin_user, kim = U(username="sam", role="admin"), U(username="kim", role="user")
+    assert cli.token_for(admin_user) == "admin-token"
+    assert cli.token_for(kim) is None and not cli.token_configured(kim)
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN_KIM", "kim-token")
+    assert cli.token_for(kim) == "kim-token"
+    assert cli.token_key("mary-jo") == "CLAUDE_CODE_OAUTH_TOKEN_MARY_JO"

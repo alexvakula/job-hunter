@@ -21,7 +21,7 @@
       <a href="/sources">Sources</a>
       <a href="/watchlist">Watchlist</a>
       <a href="/settings">Settings</a>
-      {% if current_user.is_admin %}<a href="/admin/users">Admin</a> <a href="/claude">Claude</a>{% endif %}
+      {% if current_user.is_admin %}<a href="/admin/users">Admin</a>{% endif %} {% if current_user.is_admin or claude_enabled %}<a href="/claude">Claude</a>{% endif %}
       <a href="/jobs/new" class="btn btn-small">+ Add job</a>
     </nav>
     <div class="who">

@@ -22,6 +22,9 @@ if log:
                     "cwd": os.getcwd(),
                     "files": os.listdir("."),
                     "env": sorted(os.environ),
+                    # test tokens only: lets tests check whose account a job ran on
+                    "token": os.environ.get("CLAUDE_CODE_OAUTH_TOKEN"),
+                    "config_dir": os.environ.get("CLAUDE_CONFIG_DIR"),
                 }
             )
             + "\n"

@@ -20,7 +20,7 @@ class NotAllowed(Exception):
 
 
 def enabled_for(user: UserAccount | None) -> bool:
-    return bool(user and user.is_admin and user.is_active and cli.token_configured())
+    return bool(user and user.is_active and cli.token_configured(user))
 
 
 def enqueue(
@@ -74,11 +74,12 @@ def process_next(session: Session) -> ClaudeJob | None:
         try:
             user = session.get(UserAccount, job.user_id)
             if not enabled_for(user):
-                raise cli.ClaudeError("Claude is only available to the admin with a token.")
+                raise cli.ClaudeError(cli.TOKEN_HELP)
             from jobhunter.services.claude.prep import prep_job
 
             handlers = {**tasks.HANDLERS, "prep": prep_job}
-            outcome = handlers[job.kind](session, user, job)
+            with cli.account(user):  # the user's own token, never another user's
+                outcome = handlers[job.kind](session, user, job)
             job.status, job.summary = "done", outcome.summary
             job.result, job.cost_usd = outcome.result, outcome.cost_usd
         except cli.ClaudeError as exc:

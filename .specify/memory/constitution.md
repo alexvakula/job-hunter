@@ -105,9 +105,11 @@ Rationale: these are the places where silent errors corrupt data or embarrass th
   to read or change another user's data, including by guessing IDs or URLs. The admin role
   grants account management, not access to other users' data.
 - The source list is shared by all users and managed by the admin.
-- Claude-powered features are available to the admin only, running on the admin's own
-  subscription token (decided 2026-10-05 in feature 005, in line with the Claude subscription
-  terms). Extending them to other users requires each user's own credentials and an amendment.
+- Claude-powered features are available to each user who has their own Claude credentials:
+  their own subscription token in `.env` as `CLAUDE_CODE_OAUTH_TOKEN_<USERNAME>` (the admin may
+  use `CLAUDE_CODE_OAUTH_TOKEN`). A user's Claude jobs MUST run only on that user's own token
+  and CLI settings; a token MUST NEVER serve another user's jobs, in line with the Claude
+  subscription terms (amended 2026-10-06; previously admin only).
 - Pages MUST be server-rendered. JavaScript is limited to HTMX and small, justified additions
   (e.g. SortableJS for the kanban); no SPA framework or frontend build step.
 - New dependencies, services or abstractions MUST be justified in the plan's Complexity
@@ -164,4 +166,4 @@ Rationale: job history and sent-document records are irreplaceable.
 - Compliance is checked at every plan's Constitution Check, during `/speckit-analyze`, and in
   review of each implementation change.
 
-**Version**: 2.0.2 | **Ratified**: 2026-10-05 | **Last Amended**: 2026-10-05
+**Version**: 2.1.0 | **Ratified**: 2026-10-05 | **Last Amended**: 2026-10-06

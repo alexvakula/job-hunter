@@ -56,7 +56,7 @@ def queue_daily_claude(session: Session) -> None:
     now_local = to_local(utcnow())
     if now_local.hour < DAILY_HOUR:
         return
-    for user in session.exec(select(UserAccount).where(UserAccount.role == "admin")).all():
+    for user in session.exec(select(UserAccount).where(UserAccount.is_active.is_(True))).all():
         if not claude_queue.enabled_for(user) or not runner.active_profiles(session, user.id):
             continue
         last = session.exec(

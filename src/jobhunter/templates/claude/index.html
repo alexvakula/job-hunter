@@ -6,8 +6,8 @@
 <section class="card">
   <p>Token: <span class="badge">{{ 'configured' if token else 'not configured' }}</span> ·
      CLI: <span class="badge">{{ 'installed' if installed else 'missing' }}</span></p>
-  {% if not token %}<p class="warn">On your computer run <code>claude setup-token</code>, then add <code>CLAUDE_CODE_OAUTH_TOKEN=…</code> to <code>/opt/docker/job-hunter/.env</code> and run <code>docker compose up -d</code>. The token is never shown here.</p>{% endif %}
-  <p class="muted">Claude runs one job at a time in the background, may only search and read the web for “Find jobs” (never LinkedIn, Indeed or Glassdoor pages), and uses only your master resume as facts. Only you (admin) can use it.</p>
+  {% if not token %}<p class="warn">Sign in with <code>claude setup-token</code> using your own Claude account, then add <code>CLAUDE_CODE_OAUTH_TOKEN_{{ current_user.username|upper }}=…</code> to <code>/opt/docker/job-hunter/.env</code> and run <code>docker compose up -d</code>. The token is never shown here.</p>{% endif %}
+  <p class="muted">Claude runs one job at a time in the background, may only search and read the web for “Find jobs” (never LinkedIn, Indeed or Glassdoor pages), and uses only your master resume as facts. It runs on your own Claude account; nobody else's jobs use it.</p>
   <form method="post" action="/claude/find" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn"{% if not token %} disabled{% endif %}>Find jobs with Claude</button></form>
   <form method="post" action="/claude/rank" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn btn-secondary"{% if not token %} disabled{% endif %}>Rank new suggestions</button></form>
   <details><summary class="link">Models used</summary>
