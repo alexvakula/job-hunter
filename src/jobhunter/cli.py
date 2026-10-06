@@ -16,7 +16,7 @@ from jobhunter.auth.passwords import (
 )
 from jobhunter.config import get_settings
 from jobhunter.db import get_engine
-from jobhunter.models import Role, UserAccount
+from jobhunter.models import NotificationSettings, Role, UserAccount
 
 
 def _prompt_password() -> str:
@@ -126,6 +126,33 @@ def backup(dest: str) -> int:
     return 0
 
 
+def notify_admins(text: str, send=None) -> int:
+    """Telegram alert to every active admin with a chat id (e.g. a failed backup). Sent even
+    when daily reminders are off; 0 if at least one admin got it."""
+    from jobhunter.services import telegram
+
+    send = send or telegram.send
+    with Session(get_engine()) as db:
+        chats = db.exec(
+            select(NotificationSettings.telegram_chat_id)
+            .join(UserAccount, UserAccount.id == NotificationSettings.user_id)
+            .where(UserAccount.role == Role.ADMIN.value, UserAccount.is_active.is_(True))
+        ).all()
+    chats = [c for c in chats if c]
+    if not chats:
+        print("error: no admin has a Telegram chat id (Settings -> Notifications)", file=sys.stderr)
+        return 1
+    sent = 0
+    for chat in chats:
+        result = send(chat, text)
+        if result.ok:
+            sent += 1
+        else:
+            print(f"error: {result.message}", file=sys.stderr)
+    print(f"alert sent to {sent} of {len(chats)} admin(s)")
+    return 0 if sent else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="jobhunter")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -156,6 +183,9 @@ def main(argv: list[str] | None = None) -> int:
     p_backup = sub.add_parser("backup", help="online backup of the SQLite database")
     p_backup.add_argument("dest")
 
+    p_alert = sub.add_parser("notify-admins", help="send a Telegram alert to the admins")
+    p_alert.add_argument("message")
+
     args = parser.parse_args(argv)
     if args.command == "create-admin":
         return create_admin(args.username, args.display_name, args.seed_defaults)
@@ -165,6 +195,8 @@ def main(argv: list[str] | None = None) -> int:
         return set_password(args.username)
     if args.command == "create-user":
         return create_account(args.username, args.display_name, Role.USER)
+    if args.command == "notify-admins":
+        return notify_admins(args.message)
     return backup(args.dest)
 
 
