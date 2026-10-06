@@ -56,7 +56,8 @@ results each) through the same public Workday search the career site uses.
   merged without duplicates.
 - **FR-007**: Workday postings shown only as "N Locations" whose title fits a target position MUST
   be looked up once (within the per-run detail budget) to get all places, work mode and
-  description; a multi-place posting matches when any one of its places does.
+  description; a multi-place posting matches when any one of its places does. Looked-up details are
+  cached for 30 days (shared, public data only), so each job costs one request; up to 100 per run.
 
 ## Success Criteria
 

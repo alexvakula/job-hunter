@@ -4,7 +4,13 @@ import httpx
 import pytest
 from sqlmodel import select
 
-from jobhunter.models import JobSuggestion, SearchRun, UserAccount, WatchCompany
+from jobhunter.models import (
+    JobSuggestion,
+    PostingDetail,
+    SearchRun,
+    UserAccount,
+    WatchCompany,
+)
 from jobhunter.routes.watchlist import get_launcher
 from jobhunter.services.fetch import FETCH_FAILED, FETCHED, Fetcher, FetchResult, get_fetcher
 from jobhunter.services.search import runner
@@ -206,11 +212,14 @@ def test_workday_multi_location_jobs_get_their_places(two_users, session, app):
         (sug,) = session.exec(select(JobSuggestion).where(JobSuggestion.user_id == uid)).all()
         assert sug.title == "QA Lead" and "Calgary, Alberta" in sug.location
         assert "test automation" in sug.description
-        # the next run does not look up the already suggested job again
+        # details are cached: the next run looks nothing up again
         fake.calls.clear()
         alice.post("/sources/import")
-        assert [u for _m, u, _b in fake.calls if "/job/" in u] == [
-            f"{base}/job/Toronto/Test-Lead_R11"
+        assert [u for _m, u, _b in fake.calls if "/job/" in u] == []
+        cached = session.exec(select(PostingDetail)).all()
+        assert sorted(c.location for c in cached) == [
+            "Toronto, Ontario; Calgary, Alberta; Montreal, Quebec",
+            "Toronto, Ontario; Ottawa, Ontario",
         ]
     finally:
         app.dependency_overrides.clear()

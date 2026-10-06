@@ -571,3 +571,16 @@ class JobPrep(SQLModel, table=True):
     job_id: int = Field(sa_column=_fk("job.id"))
     data: dict = Field(default_factory=dict, sa_column=Column(JSON, nullable=False))
     updated_at: datetime = Field(default_factory=utcnow)
+
+
+class PostingDetail(SQLModel, table=True):
+    """Public details of a board posting (places, work mode, description), looked up once
+    and shared by all users: it holds no user data (feature 007)."""
+
+    __tablename__ = "posting_detail"
+
+    url_norm: str = Field(primary_key=True)
+    location: str | None = None
+    work_mode: str | None = None
+    description: str | None = None
+    fetched_at: datetime = Field(default_factory=utcnow)

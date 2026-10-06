@@ -4,14 +4,16 @@ import json
 import logging
 import threading
 from dataclasses import dataclass, field
+from datetime import timedelta
 
-from sqlmodel import Session, select
+from sqlmodel import Session, delete, select
 
 from jobhunter.db import utcnow
 from jobhunter.models import (
     Job,
     JobSuggestion,
     LocationRule,
+    PostingDetail,
     SearchRun,
     Source,
     TargetProfile,
@@ -24,7 +26,8 @@ from jobhunter.services.search import boards, jobbank
 from jobhunter.services.search.postings import Posting, best_match, title_matches
 
 log = logging.getLogger(__name__)
-MAX_DETAIL_FETCHES = 40
+MAX_DETAIL_FETCHES = 100
+DETAIL_TTL = timedelta(days=30)
 JSON_MAX_BYTES = 10 * 1024 * 1024
 _locks: dict[int, threading.Lock] = {}
 _guard = threading.Lock()
@@ -88,32 +91,50 @@ def _already_suggested(session, user_id, url_norm) -> bool:
     )
 
 
-def _fill_detail(session, posting: Posting, fetcher, budget) -> None:
+def _fill_detail(session, posting: Posting, fetcher, budget, url_norm: str) -> None:
     """Completes a posting from its board's job detail (Greenhouse description; Workday
-    places, work mode and description), within the per-run budget of detail requests."""
-    if not (fetcher and budget and budget[0] > 0 and posting.detail_url):
+    places, work mode and description). Details are cached for DETAIL_TTL, so each job
+    costs one request from the per-run budget no matter how often it is listed."""
+    if not (posting.detail_url and url_norm):
         return
-    budget[0] -= 1
-    workday = "/wday/cxs/" in posting.detail_url
+    cached = session.get(PostingDetail, url_norm)
+    if cached is None or cached.fetched_at < utcnow() - DETAIL_TTL:
+        if not (fetcher and budget and budget[0] > 0):
+            return
+        budget[0] -= 1
+        fetched = _fetch_detail(session, posting.detail_url, fetcher)
+        if fetched is None:
+            posting.detail_url = None  # one attempt per run
+            return
+        cached = cached or PostingDetail(url_norm=url_norm)
+        cached.location, cached.work_mode, cached.description = fetched
+        cached.fetched_at = utcnow()
+        session.add(cached)
+        session.commit()
+    posting.detail_url = None
+    posting.location = posting.location or cached.location
+    posting.work_mode = posting.work_mode or cached.work_mode
+    posting.remote = bool(posting.remote or posting.work_mode == "remote")
+    posting.description = posting.description or cached.description
+
+
+def _fetch_detail(session, detail_url: str, fetcher) -> tuple | None:
+    """(location, work_mode, description) from a job detail, or None."""
+    workday = "/wday/cxs/" in detail_url
     src = _source(session, "Workday" if workday else "Greenhouse")
     if src is None:
-        return
-    res = fetcher.fetch(posting.detail_url, src, max_bytes=JSON_MAX_BYTES)
-    posting.detail_url = None  # one attempt per posting
+        return None
+    res = fetcher.fetch(detail_url, src, max_bytes=JSON_MAX_BYTES)
     if res.status != FETCHED:
-        return
+        return None
     try:
         data = json.loads(res.html)
     except ValueError:
-        return
+        return None
     if not workday:
-        posting.description = boards.greenhouse_detail(data)
-        return
-    detail = boards.workday_detail(data)
-    posting.location = posting.location or detail["location"]
-    posting.work_mode = posting.work_mode or detail["work_mode"]
-    posting.remote = bool(posting.remote or posting.work_mode == "remote")
-    posting.description = posting.description or detail["description"]
+        return None, None, boards.greenhouse_detail(data)
+    d = boards.workday_detail(data)
+    return d["location"], d["work_mode"], d["description"]
 
 
 def _suggest(
@@ -138,7 +159,7 @@ def _suggest(
         and not _already_suggested(session, user_id, url_norm)
     ):
         # e.g. Workday's "3 Locations": the places are only in the job's detail
-        _fill_detail(session, posting, fetcher, detail_budget)
+        _fill_detail(session, posting, fetcher, detail_budget, url_norm)
     m = best_match(posting, profiles)
     if m is None:
         return
@@ -152,7 +173,7 @@ def _suggest(
     ).first()
     description = posting.description
     if description is None and posting.detail_url:
-        _fill_detail(session, posting, fetcher, detail_budget)
+        _fill_detail(session, posting, fetcher, detail_budget, url_norm)
         description = posting.description
     session.add(
         JobSuggestion(
@@ -275,6 +296,8 @@ def _run_watchlist(session, user_id, profiles, fetcher, stats: SourceStats) -> N
     ).all()
     budget = [MAX_DETAIL_FETCHES]
     titles = _search_titles(profiles)
+    session.exec(delete(PostingDetail).where(PostingDetail.fetched_at < utcnow() - 2 * DETAIL_TTL))
+    session.commit()
     for company in companies:
         board = boards.Board(
             company.board_type, company.board_id, company.board_host, company.board_site
