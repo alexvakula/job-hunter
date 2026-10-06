@@ -1,0 +1,75 @@
+JOB SOURCES USED BY JOB HUNTER
+==============================
+
+How each source reaches the app. Automatic access only where the site's terms and robots.txt
+allow it (constitution principle V); everything else arrives through job-alert emails sent to the
+user's job mailbox, or by pasting a link or the posting text.
+
+
+1. AUTOMATIC SEARCHES (daily at 06:00 and "Import from all")
+-------------------------------------------------------------
+
+Job Bank (Government of Canada)
+  https://www.jobbank.gc.ca/
+  How:   official public search feed (Atom), one query per target-position title and Canadian place
+  Rules: robots.txt allows access with a 5-second crawl delay; the app waits 5 s between requests
+  Note:  the feed ignores the location, so the app filters places itself; few senior software roles
+
+Company watchlist: public job boards of chosen employers
+  Greenhouse   https://boards.greenhouse.io/<company>       API: boards-api.greenhouse.io
+  Lever        https://jobs.lever.co/<company>              API: api.lever.co
+  Ashby        https://jobs.ashbyhq.com/<company>           API: api.ashbyhq.com
+  Workday      https://<tenant>.wdN.myworkdayjobs.com/<site> JSON behind the public career site
+  How:   paste a company's careers link, or import a CSV of companies; boards are found through the
+         public board APIs (never the companies' own websites)
+  Rules: official public interfaces; at most 1 request per second per API host
+
+Claude web search (optional, admin only)
+  How:   "Find jobs with Claude" and a daily run: Claude searches the web for the target positions
+  Rules: only WebSearch/WebFetch tools; LinkedIn, Indeed and Glassdoor pages are never fetched;
+         results go through the same duplicate and place checks
+
+
+2. JOB-ALERT EMAILS (to the user's job mailbox, checked every 15 minutes)
+-------------------------------------------------------------------------
+
+  LinkedIn     https://www.linkedin.com/jobs/      alerts go to the account's primary email
+  Indeed       https://ca.indeed.com/              any email address per alert
+  Glassdoor    https://www.glassdoor.ca/           alerts go to the account's email
+  Job Bank     https://www.jobbank.gc.ca/          saved-search alerts
+  Workopolis   https://www.workopolis.com/         saved as emails (no job extraction yet)
+  Eluta.ca     https://www.eluta.ca/               saved as emails (no job extraction yet)
+
+  How:   jobs listed in LinkedIn, Indeed, Glassdoor and Job Bank alerts become suggested jobs
+  Rules: these sites forbid automated searching (Eluta's robots.txt disallows search and RSS),
+         so alerts are the only automatic route; the app never logs in to them or stores their
+         passwords
+
+
+3. PASTE A LINK OR THE POSTING TEXT (any site)
+-----------------------------------------------
+
+  Pages are downloaded to pre-fill the form only for sources marked "may download" and only if
+  robots.txt allows it:
+
+  Job Bank         https://www.jobbank.gc.ca/                      download allowed
+  GC Jobs          https://emploisfp-psjobs.cfp-psc.gc.ca/          download allowed
+  Eluta.ca         https://www.eluta.ca/                           download allowed (single page)
+  CharityVillage   https://charityvillage.com/                     download allowed
+  Greenhouse, Lever, Ashby, Workday job pages                      download allowed
+  LinkedIn, Indeed, Glassdoor, Workopolis                          link saved, paste the text
+  Any other site                                                   link saved, paste the text
+
+
+4. COMPANY DIRECTORIES (to find employers)
+-------------------------------------------
+
+ABTEC 5000 (Technology Alberta)
+  https://technologyalberta.com/abtec-5000/
+  How:   browse it in a browser, or save the list as CSV and import it into the watchlist; the app
+         then looks up each company's public job board
+  Rules: the site is behind a bot challenge, so the app never downloads it
+
+
+The admin can add, edit or disable sources under Admin -> Job sources (domains, "may download",
+"sends job-alert emails").
