@@ -103,6 +103,7 @@ class Posting:
     work_mode: str | None = None  # onsite | hybrid | remote
     posted_at: datetime | None = None
     detail_url: str | None = None  # where a full description can be fetched, if not included
+    detail_kind: str | None = None  # greenhouse | workday | successfactors: how to read it
 
 
 @dataclass

@@ -37,7 +37,8 @@ Company watchlist: public job boards of chosen employers
   Big employers (more open jobs than can be read in full, e.g. Medtronic, TD, RBC) are
          searched with each target-position title instead (Workday, Eightfold, Phenom,
          SuccessFactors, Oracle Cloud). Jobs listed as
-         "3 Locations" whose title fits are looked up once to get their places and description.
+         "3 Locations" (Workday) or "+3 more" (SuccessFactors) whose title fits are looked up
+         once to get their places and description.
   Rules: official public feeds or the public search the career site itself uses; robots.txt
          is read as RFC 9309 defines it (most specific rule wins); at most 1 request per second per API
          host, 5 seconds between requests to the same careers site

@@ -92,9 +92,9 @@ def _already_suggested(session, user_id, url_norm) -> bool:
 
 
 def _fill_detail(session, posting: Posting, fetcher, budget, url_norm: str) -> None:
-    """Completes a posting from its board's job detail (Greenhouse description; Workday
-    places, work mode and description). Details are cached for DETAIL_TTL, so each job
-    costs one request from the per-run budget no matter how often it is listed."""
+    """Completes a posting from its board's job detail (Greenhouse description; Workday and
+    SuccessFactors places and description; Workday work mode). Details are cached for
+    DETAIL_TTL, so each job costs one request from the per-run budget however often listed."""
     if not (posting.detail_url and url_norm):
         return
     cached = session.get(PostingDetail, url_norm)
@@ -102,7 +102,7 @@ def _fill_detail(session, posting: Posting, fetcher, budget, url_norm: str) -> N
         if not (fetcher and budget and budget[0] > 0):
             return
         budget[0] -= 1
-        fetched = _fetch_detail(session, posting.detail_url, fetcher)
+        fetched = _fetch_detail(session, posting, fetcher)
         if fetched is None:
             posting.detail_url = None  # one attempt per run
             return
@@ -118,20 +118,30 @@ def _fill_detail(session, posting: Posting, fetcher, budget, url_norm: str) -> N
     posting.description = posting.description or cached.description
 
 
-def _fetch_detail(session, detail_url: str, fetcher) -> tuple | None:
-    """(location, work_mode, description) from a job detail, or None."""
-    workday = "/wday/cxs/" in detail_url
-    src = _source(session, "Workday" if workday else "Greenhouse")
+DETAIL_SOURCES = {
+    "greenhouse": "Greenhouse",
+    "workday": "Workday",
+    "successfactors": "SuccessFactors",
+}
+
+
+def _fetch_detail(session, posting: Posting, fetcher) -> tuple | None:
+    """(location, work_mode, description) from a job's detail, or None."""
+    kind = posting.detail_kind or "greenhouse"
+    src = _source(session, DETAIL_SOURCES.get(kind, ""))
     if src is None:
         return None
-    res = fetcher.fetch(detail_url, src, max_bytes=JSON_MAX_BYTES)
+    res = fetcher.fetch(posting.detail_url, src, max_bytes=JSON_MAX_BYTES)
     if res.status != FETCHED:
         return None
+    if kind == "successfactors":
+        d = boards.successfactors_detail(res.html)
+        return d["location"], d["work_mode"], d["description"]
     try:
         data = json.loads(res.html)
     except ValueError:
         return None
-    if not workday:
+    if kind == "greenhouse":
         return None, None, boards.greenhouse_detail(data)
     d = boards.workday_detail(data)
     return d["location"], d["work_mode"], d["description"]

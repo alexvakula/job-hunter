@@ -338,8 +338,14 @@ def test_paged_site_parsers():
     sf_board = boards.Board("successfactors", "jobs.acme.example", "jobs.acme.example")
     text = (FIX / "successfactors_search.html").read_text()
     sf = boards.parse_list(sf_board, text, "Acme")
+    # "+2 more": the places come from the job's own page
+    assert (sf[0].location, sf[0].detail_url, sf[0].detail_kind) == (
+        None,
+        "https://jobs.acme.example/job/Calgary-QA-Lead-AB/1001/",
+        "successfactors",
+    )
     assert [(p.title, p.location, p.url) for p in sf] == [
-        ("QA Lead", "Calgary, AB, CA", "https://jobs.acme.example/job/Calgary-QA-Lead-AB/1001/"),
+        ("QA Lead", None, "https://jobs.acme.example/job/Calgary-QA-Lead-AB/1001/"),
         (
             "Store Manager & Lead",
             "Toronto, ON, CA",
@@ -347,6 +353,10 @@ def test_paged_site_parsers():
         ),
     ]
     assert boards.total_jobs(sf_board, text) == 2
+    detail = boards.successfactors_detail((FIX / "successfactors_job.html").read_text())
+    assert detail["location"] == "Toronto, ON, CA; Calgary, AB, CA; Ottawa, ON, CA"
+    assert "Lead test automation" in detail["description"]
+    assert "Other field" not in detail["description"]
 
 
 def test_oracle_parser():

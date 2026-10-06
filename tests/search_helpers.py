@@ -74,5 +74,6 @@ def standard_routes():
         "https://acme.eightfold.ai/api/pcsx/search": "eightfold_search.json",
         "https://jobs.acme.example/ca/en/search-results": "phenom_search.html",
         "https://careers.acme.example/search/": "successfactors_search.html",
+        "https://careers.acme.example/job/Calgary-QA-Lead-AB/1001/": "successfactors_job.html",
         "https://abcd.fa.us2.oraclecloud.com/hcmRestApi/": "oracle_requisitions.json",
     }

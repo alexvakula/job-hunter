@@ -223,6 +223,7 @@ def parse_greenhouse(data: dict, company: str) -> list[Posting]:
                 if content
                 else f"https://boards-api.greenhouse.io/v1/boards/"
                 f"{_token(j.get('absolute_url', ''))}/jobs/{j.get('id')}",
+                detail_kind=None if content else "greenhouse",
             )
         )
     return out
@@ -308,6 +309,7 @@ def parse_workday(data: dict, board: Board, company: str) -> list[Posting]:
                 location=place,
                 remote="remote" in (place or "").lower(),
                 detail_url=f"https://{board.host}/wday/cxs/{board.board_id}/{board.site}{path}",
+                detail_kind="workday",
             )
         )
     return out
@@ -534,15 +536,20 @@ def parse_successfactors(text: str, board: Board, company: str) -> list[Posting]
         if not link:
             continue
         place_html = (_SF_PLACE.search(row) or [None, ""])[1]
-        place_html = re.sub(r"<small.*?</small>", "", place_html, flags=re.S)  # "+3 more…"
+        # "Calgary, AB +3 more…": the other places are only on the job's own page
+        more = "<small" in place_html
+        place_html = re.sub(r"<small.*?</small>", "", place_html, flags=re.S)
         place = " ".join(html_lib.unescape(_TAG.sub(" ", place_html)).split())
+        url = f"https://{board.host}{html_lib.unescape(link.group(1))}"
         out.append(
             Posting(
                 title=" ".join(html_lib.unescape(_TAG.sub(" ", link.group(2))).split()),
-                url=f"https://{board.host}{html_lib.unescape(link.group(1))}",
+                url=url,
                 company=company,
-                location=place or None,
+                location=None if more else (place or None),
                 remote="remote" in place.lower(),
+                detail_url=url if more else None,
+                detail_kind="successfactors" if more else None,
             )
         )
     return out
@@ -579,6 +586,23 @@ def parse_oracle(data: dict, board: Board, company: str) -> list[Posting]:
             )
         )
     return out
+
+
+_SF_GEO = re.compile(
+    r'<span class="jobGeoLocation">(.*?)</span>\s*(?=<span class="jobGeo|</)', re.S
+)
+_SF_DESC = re.compile(r'<span class="jobdescription">(.*?)(?:data-careersite-propertyid=|$)', re.S)
+
+
+def successfactors_detail(text: str) -> dict:
+    """All places and the description from a SuccessFactors job page."""
+    places = [" ".join(html_lib.unescape(_TAG.sub(" ", p)).split()) for p in _SF_GEO.findall(text)]
+    desc = _SF_DESC.search(text)
+    return {
+        "location": _places(places),
+        "work_mode": None,
+        "description": html_to_text(desc.group(1)[:50_000]) if desc else None,
+    }
 
 
 def total_jobs(board: Board, text: str) -> int:
