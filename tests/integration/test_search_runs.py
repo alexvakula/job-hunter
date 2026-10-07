@@ -104,6 +104,7 @@ def test_more_boards_are_searched(two_users, session, app):
     _watch(session, uid, "oracle", "CX_1", "abcd.fa.us2.oraclecloud.com", name="Acme oracle")
     _watch(session, uid, "bamboohr", name="Acme bamboohr")
     _watch(session, uid, "hibob", name="Acme hibob")
+    _watch(session, uid, "successfactors", "d", "careers.deloitte.ca", "feed", name="Deloitte")
     routes = standard_routes()
     routes.pop("https://www.jobbank.gc.ca/jobsearch/feed/")
     fake = FakeFetcher(routes)
@@ -134,6 +135,8 @@ def test_more_boards_are_searched(two_users, session, app):
         ("Acme rippling", "QA Lead"),
         ("Acme sf", "QA Lead"),
     ]
+    feed_calls = [u for _, u, _ in fake.calls if "deloitte" in u]
+    assert feed_calls == ["https://careers.deloitte.ca/sitemap.xml"]  # one request, not paged
     companies = session.exec(select(WatchCompany).where(WatchCompany.user_id == uid)).all()
     assert {c.status for c in companies} == {"ok"}
     assert fake.headers["https://acme.careers.hibob.com/api/job-ad"] == {

@@ -391,8 +391,32 @@ def test_detect_career_sites():
     # a Phenom page from another host is not this site
     assert boards.detect_board("https://other.example/", phenom) is None
     b = boards.detect_board("https://jobs.acme.example/search/?q=", sf)
-    assert (b.type, b.host) == ("successfactors", "jobs.acme.example")
+    assert (b.type, b.host, b.site) == ("successfactors", "jobs.acme.example", None)
     assert boards.detect_board("https://acme.example/careers", "<html>hi</html>") is None
+    # newer ("unify") SuccessFactors sites list no jobs in the page: read through their feed
+    unify = (
+        '<html><body class="coreCSB search-page body unify body">'
+        '<link href="https://rmkcdn.successfactors.com/x.css"></body></html>'
+    )
+    b = boards.detect_board("https://careers.deloitte.ca/search/", unify)
+    assert (b.type, b.host, b.site) == ("successfactors", "careers.deloitte.ca", "feed")
+    assert boards.list_request(b, "QA Lead", 50)[1] == "https://careers.deloitte.ca/sitemap.xml"
+    assert boards.paged_limits(b) is None
+    assert boards.paged_limits(boards.Board("successfactors", "h", host="h")) == (100, 50)
+
+
+def test_successfactors_feed_parser():
+    board = boards.Board("successfactors", "careers.deloitte.ca", "careers.deloitte.ca", "feed")
+    ps = boards.parse_list(board, (FIX / "successfactors_feed.xml").read_text(), "Deloitte")
+    calgary, multi, other = ps
+    assert calgary.title == "Manager, Accounting & Reporting Assurance (ARA) - Calgary"
+    assert calgary.location == "Calgary, AB" and calgary.work_mode == "hybrid"
+    assert calgary.url.startswith("https://careers.deloitte.ca/job/")
+    assert calgary.company == "Deloitte" and "Our Purpose" in calgary.description
+    assert "Calgary, AB" in multi.location and "Toronto, ON" in multi.location
+    assert multi.work_mode == "remote" and multi.remote
+    assert other.location == "Toronto, ON, CA"  # no list of places: the posting's own, no postcode
+    assert boards.parse_list(board, "not xml", "Deloitte") == []
 
 
 @pytest.mark.parametrize(

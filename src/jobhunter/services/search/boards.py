@@ -32,6 +32,18 @@ PAGED_LIMITS = {
     "oracle": (200, 50),
 }
 ORACLE_PAGE_SIZE = 50
+# Newer SuccessFactors sites ("unify") build their job list in the browser from /services/,
+# which their robots.txt disallows; they publish every job in the RSS feed at /sitemap.xml.
+SF_FEED = "feed"
+FEED_MAX_BYTES = 40 * 1024 * 1024
+
+
+def paged_limits(board: "Board") -> tuple[int, int] | None:
+    """(read in full up to N jobs, else M results per title search), or None if the board's
+    list comes in one response."""
+    if board.type == "successfactors" and board.site == SF_FEED:
+        return None
+    return PAGED_LIMITS.get(board.type)
 
 
 @dataclass
@@ -132,7 +144,8 @@ def detect_board(url: str, html: str) -> Board | None:
             if page_host == host:
                 return Board("phenom", host, host=host, site=site)
     if "jobTitle-link" in html or "rmkcdn.successfactors.com" in html:
-        return Board("successfactors", host, host=host)
+        unify = re.search(r'<body[^>]*class="[^"]*\bunify\b', html)
+        return Board("successfactors", host, host=host, site=SF_FEED if unify else None)
     return None
 
 
@@ -180,6 +193,8 @@ def list_request(board: Board, search: str = "", offset: int = 0) -> tuple[str, 
             f"https://{board.host}/{board.site}/search-results?keywords={q}&from={offset}",
             None,
         )
+    if board.type == "successfactors" and board.site == SF_FEED:
+        return "GET", f"https://{board.host}/sitemap.xml", None
     if board.type == "successfactors":
         return "GET", f"https://{board.host}/search/?q={q}&startrow={offset}", None
     if board.type == "oracle":
@@ -547,7 +562,51 @@ _SF_PLACE = re.compile(r'class="colLocation[^"]*"[^>]*>(.*?)</td>', re.S)
 _SF_TOTAL = re.compile(r"of\s*<b>\s*([\d,]+)\s*</b>")
 
 
+_POSTCODE = re.compile(r",\s*[A-Z]\d[A-Z]\s?\d[A-Z]\d$|,\s*\d{5}(-\d{4})?$")
+_SF_PLACES = re.compile(r"All Available Locations:\s*(?:</strong>)?\s*([^<]+)", re.I)
+_SF_MODE = re.compile(r"Work Model:\s*(?:</strong>)?\s*([A-Za-z -]+)", re.I)
+_GOOGLE_NS = "{http://base.google.com/ns/1.0}"
+
+
+def parse_successfactors_feed(text: str, company: str) -> list[Posting]:
+    """The /sitemap.xml RSS feed of newer SuccessFactors sites: every job with its place(s),
+    work model and full description."""
+    try:
+        root = ET.fromstring(text)
+    except (ET.ParseError, DefusedXmlException):
+        return []
+    out = []
+    for item in root.iter("item"):
+        title, link = (item.findtext("title") or "").strip(), (item.findtext("link") or "").strip()
+        if not (title and link.startswith("https://")):
+            continue
+        place = _POSTCODE.sub("", (item.findtext(f"{_GOOGLE_NS}location") or "").strip())
+        if place and title.endswith(f"({item.findtext(f'{_GOOGLE_NS}location')})"):
+            title = title[: title.rindex("(")].strip()
+        html = html_lib.unescape(item.findtext("description") or "")
+        places = _SF_PLACES.search(html)
+        mode = _SF_MODE.search(html)
+        mode = (mode.group(1).strip().lower() if mode else "").replace("-", "")
+        work_mode = {"remote": "remote", "hybrid": "hybrid", "onsite": "onsite"}.get(mode)
+        out.append(
+            Posting(
+                title=title,
+                url=link,
+                company=company,
+                location=_places(
+                    [p.strip() for p in places.group(1).split(";")] if places else place
+                ),
+                description=_html_text(html[:50_000]) if html else None,
+                work_mode=work_mode,
+                remote=work_mode == "remote",
+            )
+        )
+    return out
+
+
 def parse_successfactors(text: str, board: Board, company: str) -> list[Posting]:
+    if board.site == SF_FEED:
+        return parse_successfactors_feed(text, company)
     out = []
     for row in _SF_ROW.findall(text):
         link = _SF_LINK.search(row)

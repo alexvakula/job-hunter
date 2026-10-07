@@ -270,14 +270,13 @@ def _read_pages(fetcher, source, board, company_name, search_text, limit, offset
     while True:
         method, url, body = boards.list_request(board, search_text, offset)
         extra = {"headers": h} if (h := boards.list_headers(board)) else {}
-        res = fetcher.fetch(
-            url, source, method=method, json_body=body, max_bytes=JSON_MAX_BYTES, **extra
-        )
+        size = boards.FEED_MAX_BYTES if board.site == boards.SF_FEED else JSON_MAX_BYTES
+        res = fetcher.fetch(url, source, method=method, json_body=body, max_bytes=size, **extra)
         if res.status != FETCHED:
             return postings, total, res.message or res.status
         page = boards.parse_list(board, res.html, company_name)
         postings.extend(page)
-        if board.type not in boards.PAGED_LIMITS or not page:
+        if boards.paged_limits(board) is None or not page:
             return postings, total, None
         offset += len(page)
         total = boards.total_jobs(board, res.html) or total
@@ -288,7 +287,7 @@ def _read_pages(fetcher, source, board, company_name, search_text, limit, offset
 def _read_board(fetcher, source, board, company_name, titles):
     """A board's postings. Paged boards with more jobs than their PAGED_LIMITS (big
     employers) are searched once per target title instead of being read in full."""
-    limits = boards.PAGED_LIMITS.get(board.type)
+    limits = boards.paged_limits(board)
     if limits is None:
         postings, _total, error = _read_pages(fetcher, source, board, company_name, "", 0)
         return postings, error

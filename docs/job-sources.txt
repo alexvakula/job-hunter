@@ -27,7 +27,9 @@ Company watchlist: public job boards of chosen employers
   Eightfold    https://<company>.eightfold.ai/careers       public search API /api/pcsx (allowed by robots.txt)
   Phenom       the employer's own career site, e.g. jobs.rbc.com/ca/en   its public search page
   SuccessFactors the employer's own career site, e.g. jobs.rogers.com    its public search page
-               (the sites' RSS feeds are under /services/, which their robots.txt disallows)
+               (the sites' RSS feeds are under /services/, which their robots.txt disallows);
+               newer "unify" sites (e.g. careers.deloitte.ca) build the list in the browser from
+               /services/, so the app reads their full job feed at /sitemap.xml instead
   Oracle Cloud https://<host>/hcmUI/CandidateExperience/en/sites/<site>   its public job search
                (hcmRestApi), on *.oraclecloud.com or the employer's own domain
   BambooHR     https://<company>.bamboohr.com/careers       list: /careers/list, details: /careers/<id>/detail

@@ -81,4 +81,5 @@ def standard_routes():
         "https://acme.bamboohr.com/careers/list": "bamboohr_list.json",
         "https://acme.bamboohr.com/careers/": "bamboohr_detail.json",
         "https://acme.careers.hibob.com/api/job-ad": "hibob_jobs.json",
+        "https://careers.deloitte.ca/sitemap.xml": "successfactors_feed.xml",
     }
