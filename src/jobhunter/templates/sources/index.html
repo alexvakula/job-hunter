@@ -26,6 +26,7 @@
     <p><span class="badge">{{ c.method }}</span></p>
     <p>{{ c.steps }}</p>
     {% if c.url %}<p><a href="{{ c.url }}" rel="noopener noreferrer" target="_blank">Open {{ c.source.name }} ↗</a></p>{% endif %}
+    {% if c.add_one %}<p>Found one job you like? <a href="/jobs/new">+ Add job</a>: {{ c.add_one }}</p>{% endif %}
     {% if c.needs_mailbox %}<p class="warn"><a href="/settings/mailbox">Set up your job mailbox</a> to use alerts.</p>{% endif %}
     <p class="muted">{% if c.source.alert_sender %}{{ c.alerts }} alert{{ '' if c.alerts == 1 else 's' }} · {{ c.suggested }} suggested · {{ c.added }} added · {% endif %}{{ c.jobs }} job{{ '' if c.jobs == 1 else 's' }} tracked
       {% if c.last_alert %}· last alert {{ c.last_alert|local_dt }}{% endif %}</p>

@@ -173,8 +173,9 @@ class Fetcher:
         if not (source.fetch_allowed and source.enabled):
             return FetchResult(
                 NOT_FETCHED_DISALLOWED,
-                message=f"{source.name} doesn't allow automatic downloading. "
-                "Paste the posting text below.",
+                message=f"{source.name} doesn't let Job Hunter download its pages. Open the "
+                "posting, select and copy its whole text, paste it under Posting text and click "
+                "Fill in details. Or type the details in the form below.",
             )
         current = url
         for _ in range(MAX_REDIRECTS + 1):

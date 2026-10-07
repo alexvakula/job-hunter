@@ -75,7 +75,7 @@ def test_prefill_from_linkedin_is_not_fetched(two_users, mock_fetch):
         "/jobs/prefill", data={"url": "https://www.linkedin.com/jobs/view/42/", "text": ""}
     )
     assert resp.status_code == 200
-    assert "allow automatic downloading" in resp.text
+    assert "let Job Hunter download its pages" in resp.text
     assert re.search(r'<option value="\d+" selected>LinkedIn</option>', resp.text)
     assert mock_fetch == []
 

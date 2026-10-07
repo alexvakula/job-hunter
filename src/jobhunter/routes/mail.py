@@ -461,6 +461,15 @@ DIRECTORY_SETUP = {
 }
 
 
+def _add_one_hint(source: Source) -> str:
+    if source.fetch_allowed and source.enabled:
+        return "paste its link and the details are filled in for you."
+    return (
+        f"paste its link, then copy the whole posting text from {source.name} and paste it "
+        f"too ({source.name} doesn't let Job Hunter download its pages)."
+    )
+
+
 @router.get("/sources")
 def sources_page(
     request: Request, user: UserAccount = Depends(current_user), db: Session = Depends(get_session)
@@ -549,6 +558,7 @@ def sources_page(
                 "added": sugg.get(s.id, {}).get("added", 0),
                 "jobs": jobs_by_source.get(s.id, 0),
                 "needs_mailbox": s.alert_sender and not address,
+                "add_one": _add_one_hint(s) if s.alert_sender else None,
             }
         )
     from jobhunter.services.search import runner

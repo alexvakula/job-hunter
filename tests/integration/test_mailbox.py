@@ -277,6 +277,7 @@ def test_sources_page(two_users, box, session):
     alice, _ = two_users
     page = alice.get("/sources").text
     assert "Set up your" in page and 'type="password"' not in page
+    assert "copy the whole posting text from Indeed" in page
     _setup(alice)
     box.deliver_fixture("indeed_alert_1.eml")
     page = alice.get("/sources").text
@@ -295,4 +296,4 @@ def test_abtec_directory_card(two_users):
     resp = alice.post(
         "/jobs/prefill", data={"url": "https://technologyalberta.com/abtec-5000/", "text": ""}
     )
-    assert ">ABTEC 5000</option>" in resp.text and "allow automatic downloading" in resp.text
+    assert ">ABTEC 5000</option>" in resp.text and "let Job Hunter download its pages" in resp.text

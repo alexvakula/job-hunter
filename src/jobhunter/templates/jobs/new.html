@@ -19,7 +19,8 @@
 {% if draft is none or show_text %}
 <form method="post" action="/jobs/prefill" class="card">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-  <p class="muted">Paste the job's link, its text, or both. You'll check the details before anything is saved.</p>
+  <p class="muted">Paste the job's link, its text, or both. You'll check the details before anything is saved.
+    For Indeed, LinkedIn and Glassdoor, paste the link <em>and</em> the posting text: those sites can't be downloaded.</p>
   <label>Job link <input name="url" type="url" placeholder="https://…" value="{{ draft.url if draft else '' }}"></label>
   <label>Posting text <textarea name="text" rows="10" placeholder="Paste the whole posting here"></textarea></label>
   <button type="submit" class="btn">Fill in details</button>
