@@ -11,6 +11,8 @@ A small, self-hosted job-search tracker for one family, running at
 - describe target positions (titles, places, work modes, salary floors),
 - get a **daily Telegram reminder** (per person) for follow-ups due and applications with no reply,
   export jobs as **CSV**, and (admin, with Claude) generate **interview prep** and company notes,
+- get **Telegram updates** as they come: new suggestions, emails from employers, finished Claude
+  tasks (opt in under Settings → Notifications),
 - keep a structured **master resume** (imported from the uploaded DOCX/PDF) and **apply from the
   app**: per job an ATS keyword match score, a tailored resume (reordered/selected from real
   experience, with an honesty check that blocks anything not in the master resume), an editable

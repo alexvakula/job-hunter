@@ -62,6 +62,10 @@ async def save(
     ns.telegram_chat_id = chat or None
     ns.stale_days = days
     ns.reminders_enabled = form.get("reminders_enabled") == "1"
+    updates_on = form.get("updates_enabled") == "1"
+    if updates_on and not ns.updates_enabled:
+        ns.last_suggestion_id = None  # start from now, not from everything found so far
+    ns.updates_enabled = updates_on
     if errors:
         db.expunge_all()
         return _page(request, user, ns, 422, errors=errors)

@@ -39,6 +39,12 @@ def run_all_checks() -> None:
         except Exception:  # noqa: BLE001
             log.exception("reminders failed")
         try:
+            from jobhunter.services import updates
+
+            updates.send_due(session)
+        except Exception:  # noqa: BLE001
+            log.exception("telegram updates failed")
+        try:
             discovery.run_batch(session)
         except Exception:  # noqa: BLE001
             log.exception("board discovery batch failed")

@@ -560,6 +560,11 @@ class NotificationSettings(SQLModel, table=True):
     stale_days: int = 7
     last_sent_on: date | None = None
     last_error: str | None = None
+    # New suggestions, employer emails and finished Claude tasks, sent as they come.
+    updates_enabled: bool = False
+    last_suggestion_id: int | None = None  # None: start from "now" on the next check
+    last_email_id: int | None = None
+    updates_checked_at: datetime | None = None
 
 
 class JobPrep(SQLModel, table=True):
