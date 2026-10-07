@@ -471,6 +471,21 @@ def suggestion_dismiss(
     return RedirectResponse("/suggestions", status_code=303)
 
 
+@router.post("/suggestions/{suggestion_id}/restore", dependencies=[Depends(csrf_protect)])
+def suggestion_restore(
+    suggestion_id: int,
+    user: UserAccount = Depends(current_user),
+    db: Session = Depends(get_session),
+):
+    """Undo a dismissal: the suggestion goes back to New."""
+    s = repo.get_owned(db, JobSuggestion, suggestion_id, user.id)
+    if s.state == "dismissed":
+        s.state = "new"
+        db.add(s)
+        db.commit()
+    return RedirectResponse("/suggestions?state=dismissed", status_code=303)
+
+
 # --- Job sources page ----------------------------------------------------------------------
 
 ALERT_SETUP = {

@@ -26,6 +26,9 @@
       {% if s.state == 'new' %}
       <form method="post" action="/suggestions/{{ s.id }}/add" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn btn-small">Add</button></form>
       <form method="post" action="/suggestions/{{ s.id }}/dismiss" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="link">Dismiss</button></form>
+      {% elif s.state == 'dismissed' %}
+      <form method="post" action="/suggestions/{{ s.id }}/add" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn btn-small">Add</button></form>
+      <form method="post" action="/suggestions/{{ s.id }}/restore" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="link">Restore</button></form>
       {% elif s.job_id %}<a href="/jobs/{{ s.job_id }}">{{ 'added' if s.state == 'added' else 'already tracked' }} →</a>
       {% else %}<span class="muted">{{ s.state }}</span>{% endif %}
     </td>
