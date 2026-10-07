@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Preview reply{% endblock %}
+{% block content %}
+<h1>Preview: this is exactly what will be sent</h1>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+{% if gaps %}<p class="warn">The message still has placeholders to fill in: {{ gaps|join(', ') }}. Go back and edit it unless you mean to send them.</p>{% endif %}
+<section class="card email-preview">
+  <p><strong>From:</strong> {{ sender.display_name }} &lt;{{ sender.from_address }}&gt;<br>
+     <strong>To:</strong> {{ compose.to|join(', ') }}<br>
+     {% if sender.reply_to %}<strong>Reply-To:</strong> {{ sender.reply_to }}<br>{% endif %}
+     {% if sender.bcc_self %}<strong>Bcc:</strong> {{ sender.from_address }}<br>{% endif %}
+     <strong>Subject:</strong> {{ compose.subject }}</p>
+  <div class="description">{{ body }}</div>
+</section>
+<form method="post" action="/mail/{{ email.id }}/reply/send" class="card">
+  {% include "resume/_hidden_compose.html" %}
+  <input type="hidden" name="token" value="{{ token }}">
+  {% if intent %}<input type="hidden" name="intent" value="{{ intent }}">{% endif %}
+  {% if new_status %}<label class="check"><input type="checkbox" name="set_status" value="1" checked> After sending, mark <a href="/jobs/{{ job.id }}">{{ job.title }} at {{ job.company }}</a> as {{ status_labels[new_status] }}</label>{% endif %}
+  <label class="check"><input type="checkbox" name="confirm" value="yes"> I have reviewed this email and want to send it</label>
+  <button type="submit" class="btn">Send reply</button>
+</form>
+<form method="post" action="/mail/{{ email.id }}/reply/edit" class="inline">
+  {% include "resume/_hidden_compose.html" %}
+  {% if intent %}<input type="hidden" name="intent" value="{{ intent }}">{% endif %}
+  <button type="submit" class="link">← Edit</button>
+</form>
+{% endblock %}

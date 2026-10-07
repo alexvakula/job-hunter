@@ -76,8 +76,9 @@ def process_next(session: Session) -> ClaudeJob | None:
             if not enabled_for(user):
                 raise cli.ClaudeError(cli.TOKEN_HELP)
             from jobhunter.services.claude.prep import prep_job
+            from jobhunter.services.claude.reply import draft_reply
 
-            handlers = {**tasks.HANDLERS, "prep": prep_job}
+            handlers = {**tasks.HANDLERS, "prep": prep_job, "reply": draft_reply}
             with cli.account(user):  # the user's own token, never another user's
                 outcome = handlers[job.kind](session, user, job)
             job.status, job.summary = "done", outcome.summary

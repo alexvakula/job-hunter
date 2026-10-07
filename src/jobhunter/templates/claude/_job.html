@@ -8,6 +8,7 @@
     {% if job.kind in ('find_jobs', 'fit_rank') %}<p><a href="/suggestions" class="btn">See suggestions</a></p>
     {% elif job.kind == 'tailor' %}<p><a href="/jobs/{{ job.result.job_id }}/apply#tailor" class="btn">Review the tailored resume</a></p>
     {% elif job.kind == 'prep' %}<p><a href="/jobs/{{ job.result.job_id }}#prep" class="btn">Open the interview prep</a></p>
+    {% elif job.kind == 'reply' %}<p><a href="/mail/{{ job.result.email_id }}/reply?draft={{ job.id }}" class="btn">Open the draft</a></p>
     {% elif job.kind == 'import' %}<p><a href="/resume/claude-import/{{ job.id }}" class="btn">Review in the editor</a></p>{% endif %}
   {% endif %}
 </div>

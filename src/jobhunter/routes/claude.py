@@ -20,6 +20,7 @@ KIND_LABELS = {
     "tailor": "Tailoring",
     "import": "Resume import",
     "prep": "Interview prep",
+    "reply": "Email reply",
 }
 
 

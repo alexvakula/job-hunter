@@ -5,7 +5,8 @@
     {% for e in job_emails %}
     <li><span class="muted">{{ (e.sent_at or e.saved_at)|local_dt }}</span>
       {% if e.direction == 'out' %}<span class="badge">sent</span> to {{ e.to_addrs|join(', ') }}{% else %}from {{ e.from_name or e.from_addr }}{% endif %}
-      — <a href="/mail/{{ e.id }}">{{ e.subject or '(no subject)' }}</a></li>
+      — <a href="/mail/{{ e.id }}">{{ e.subject or '(no subject)' }}</a>
+      {% if e.direction == 'in' and e.kind != 'alert' and e.from_addr %}<span class="muted">· <a href="/mail/{{ e.id }}/reply">Reply</a> · <a href="/mail/{{ e.id }}/reply?intent=continue">Continue</a> · <a href="/mail/{{ e.id }}/reply?intent=withdraw">Withdraw</a></span>{% endif %}</li>
     {% endfor %}
   </ol>
   {% else %}<p class="muted">No emails linked to this job yet. Emails from its contacts or company arrive here automatically.</p>{% endif %}

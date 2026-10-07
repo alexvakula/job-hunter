@@ -28,6 +28,7 @@ CLAUDE_LABELS = {
     "tailor": "Tailored resume",
     "import": "Resume import",
     "prep": "Interview prep",
+    "reply": "Email reply draft",
 }
 
 

@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Reply: {{ email.subject or 'email' }}{% endblock %}
+{% block content %}
+<p><a href="/mail/{{ email.id }}">← {{ email.subject or '(no subject)' }}</a></p>
+<h1>Reply</h1>
+{% set e = errors or {} %}
+{% for k in ('preview', 'sender') %}{% if e[k] %}<p class="error" role="alert">{{ e[k] }}</p>{% endif %}{% endfor %}
+{% if not sender or not sender.from_address %}<p class="warn">Set up <a href="/settings/sender">Sender email</a> first.</p>{% endif %}
+{% if claude_error %}<p class="error">{{ claude_error }}</p>{% endif %}
+{% if drafted %}<p class="flash">Claude's draft is below. Read it, change anything you like, then preview.{% if drafted.summary and 'placeholder' in drafted.summary %} Replace the [bracketed] parts with your own details.{% endif %}</p>{% endif %}
+
+<p>Quick reply:
+  {% for key, i in intents.items() %}<a href="/mail/{{ email.id }}/reply?intent={{ key }}" class="btn btn-small{% if intent != key %} btn-secondary{% endif %}">{{ i.label }}</a> {% endfor %}
+  {% if intent %}<a href="/mail/{{ email.id }}/reply" class="link">Clear</a>{% endif %}</p>
+
+{% if claude_enabled %}
+<form method="post" action="/mail/{{ email.id }}/reply/claude" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <h2>Draft with Claude</h2>
+  <label>Kind of reply
+    <select name="intent">
+      <option value="">Anything: follow my notes</option>
+      {% for key, i in intents.items() %}<option value="{{ key }}"{% if intent == key %} selected{% endif %}>{{ i.label }}</option>{% endfor %}
+    </select></label>
+  <label>What should the reply say? <span class="muted">(optional)</span>
+    <textarea name="instructions" rows="3" maxlength="2000" placeholder="e.g. Accept the interview, Tuesday or Wednesday afternoon works. Ask whether it's on site."></textarea></label>
+  <button type="submit" class="btn btn-secondary">Draft with Claude</button>
+  <span class="muted">Takes about a minute. Nothing is sent: you review the draft here first.</span>
+</form>
+{% endif %}
+
+<form method="post" action="/mail/{{ email.id }}/reply/preview" class="card">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  {% if intent %}<input type="hidden" name="intent" value="{{ intent }}">{% endif %}
+  <p class="muted">From: {{ sender.display_name if sender else '' }} &lt;{{ sender.from_address if sender else '' }}&gt;{% if job %} · about <a href="/jobs/{{ job.id }}">{{ job.title }} at {{ job.company }}</a>{% endif %}</p>
+  <label>To (comma-separated) <input name="to" value="{{ compose.to|join(', ') }}">{% if e.to %}<span class="field-error">{{ e.to }}</span>{% endif %}</label>
+  <label>Subject <input name="subject" value="{{ compose.subject }}">{% if e.subject %}<span class="field-error">{{ e.subject }}</span>{% endif %}</label>
+  <label>Message <textarea name="body" rows="14">{{ compose.body }}</textarea>{% if e.body %}<span class="field-error">{{ e.body }}</span>{% endif %}</label>
+  <details><summary class="muted">Your signature and the original message are added below it</summary><div class="description muted">{{ quote }}</div></details>
+  <p><button type="submit" class="btn">Preview</button> <span class="muted">Nothing is sent until you confirm on the next page.</span></p>
+</form>
+{% endblock %}

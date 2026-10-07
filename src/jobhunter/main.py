@@ -30,6 +30,7 @@ from jobhunter.routes import job_children as job_children_routes
 from jobhunter.routes import jobs as jobs_routes
 from jobhunter.routes import mail as mail_routes
 from jobhunter.routes import notifications as notifications_routes
+from jobhunter.routes import reply as reply_routes
 from jobhunter.routes import resume as resume_routes
 from jobhunter.routes import settings_profiles as settings_profiles_routes
 from jobhunter.routes import settings_resume as settings_resume_routes
@@ -121,6 +122,7 @@ def create_app() -> FastAPI:
     app.include_router(admin_routes.router)
     app.include_router(mail_routes.router)
     app.include_router(notifications_routes.router)
+    app.include_router(reply_routes.router)
     app.include_router(resume_routes.router)
     app.include_router(claude_routes.router)
     app.include_router(watchlist_routes.router)

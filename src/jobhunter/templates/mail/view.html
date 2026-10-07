@@ -13,6 +13,13 @@
     {% for a in attachments %}{% if a.skipped %}<span class="muted">{{ a.filename }} (too large, not saved)</span>{% else %}<a href="/mail/{{ email.id }}/attachments/{{ a.id }}">{{ a.filename }}</a> <span class="muted">({{ (a.size_bytes / 1024)|round(0)|int }} KB)</span>{% endif %}{% if not loop.last %}, {% endif %}{% endfor %}</p>{% endif %}
 </section>
 
+{% if email.direction == 'in' and email.kind != 'alert' and email.from_addr %}
+<p><a href="/mail/{{ email.id }}/reply" class="btn">Reply</a>
+  <a href="/mail/{{ email.id }}/reply?intent=continue" class="btn btn-secondary">Continue the interview process</a>
+  <a href="/mail/{{ email.id }}/reply?intent=withdraw" class="btn btn-secondary">Withdraw my application</a>
+  {% if claude_enabled %}<span class="muted">You can have Claude draft any of these on the next page.</span>{% endif %}</p>
+{% endif %}
+
 {% if suggestions %}
 <section class="card">
   <h2>Jobs in this alert</h2>
