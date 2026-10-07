@@ -241,6 +241,7 @@ class TargetProfile(SQLModel, table=True):
         default_factory=list, sa_column=Column(JSON, nullable=False)
     )
     seniority: str | None = None
+    # No longer used: every source is searched for every position (kept for old rows).
     source_ids: list[int] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     is_default: bool = False
     is_archived: bool = False

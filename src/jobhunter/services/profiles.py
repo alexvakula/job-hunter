@@ -11,7 +11,7 @@ from sqlalchemy import delete, update
 from sqlmodel import Session, select
 
 from jobhunter.db import utcnow
-from jobhunter.models import Currency, Job, LocationRule, Source, TargetProfile, WorkMode
+from jobhunter.models import Currency, Job, LocationRule, TargetProfile, WorkMode
 
 RULE_MODES = (WorkMode.ONSITE.value, WorkMode.HYBRID.value, WorkMode.REMOTE.value)
 MAX_RULES = 20
@@ -33,7 +33,6 @@ class ProfileInput:
     include_keywords: str = ""
     exclude_keywords: str = ""
     seniority: str = ""
-    source_ids: list[str] = field(default_factory=list)
     rules: list[RuleInput] = field(default_factory=list)
 
 
@@ -74,7 +73,6 @@ def parse_form(form) -> ProfileInput:
         include_keywords=str(form.get("include_keywords") or ""),
         exclude_keywords=str(form.get("exclude_keywords") or ""),
         seniority=str(form.get("seniority") or "").strip(),
-        source_ids=[str(v) for v in form.getlist("source_ids")],
         rules=rules,
     )
 
@@ -94,18 +92,6 @@ def validate(
         ).first()
         if clash is not None and clash.id != profile_id:
             errors["name"] = "You already have a target position with this name."
-
-    known_sources = set(session.exec(select(Source.id)).all())
-    source_ids: list[int] = []
-    for raw in data.source_ids:
-        try:
-            sid = int(raw)
-        except ValueError:
-            sid = None
-        if sid not in known_sources:
-            errors["source_ids"] = "Unknown source."
-        elif sid not in source_ids:
-            source_ids.append(sid)
 
     for index, rule in enumerate(data.rules):
         if not (rule.place or rule.work_modes or rule.floor):
@@ -145,7 +131,6 @@ def validate(
         "include_keywords": split_list(data.include_keywords),
         "exclude_keywords": split_list(data.exclude_keywords),
         "seniority": data.seniority or None,
-        "source_ids": source_ids,
     }
     return v
 

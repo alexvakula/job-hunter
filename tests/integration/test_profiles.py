@@ -1,6 +1,6 @@
 from sqlmodel import select
 
-from jobhunter.models import Job, LocationRule, Source, TargetProfile
+from jobhunter.models import Job, LocationRule, TargetProfile
 
 CALGARY = {
     "rules-0-place": "Calgary, AB",
@@ -44,13 +44,12 @@ def test_settings_pages(two_users):
 
 def test_create_profile_with_location_rules(two_users, session):
     alice, _ = two_users
-    linkedin = session.exec(select(Source).where(Source.name == "LinkedIn")).one()
-    resp = _create(alice, **USA, source_ids=str(linkedin.id))
+    resp = _create(alice, **USA)
     assert resp.status_code == 303, resp.text
     p = _profile(session, "QA Lead")
     assert p.synonyms == ["Test Manager", "QA Manager"]
     assert p.exclude_keywords == ["junior", "intern"]
-    assert p.seniority == "Lead" and p.source_ids == [linkedin.id]
+    assert p.seniority == "Lead"
     rules = session.exec(
         select(LocationRule).where(LocationRule.profile_id == p.id).order_by(LocationRule.id)
     ).all()
@@ -76,8 +75,6 @@ def test_validation(two_users, session):
         "rules-0-floor": "100000",
     }
     assert alice.post("/settings/profiles/new", data=no_currency).status_code == 422
-    bad_source = {"name": "X", **CALGARY, "source_ids": "99999"}
-    assert alice.post("/settings/profiles/new", data=bad_source).status_code == 422
     assert _create(alice).status_code == 303
     assert _create(alice).status_code == 422  # name unique per user
     assert session.exec(select(TargetProfile)).all().__len__() == 1
@@ -170,3 +167,9 @@ def test_delete_requires_confirm_and_untags_jobs(two_users, session):
 def test_new_users_start_with_no_profiles(two_users):
     _, bob = two_users
     assert "No target positions yet" in bob.get("/settings/profiles").text
+
+
+def test_no_source_picking(two_users):
+    alice, _ = two_users
+    page = alice.get("/settings/profiles/new").text
+    assert 'name="source_ids"' not in page and "Every enabled job source is searched" in page

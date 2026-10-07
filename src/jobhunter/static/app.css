@@ -64,7 +64,6 @@ label.check input { width: auto; margin: 0; }
 fieldset.rule { border: 1px solid var(--line); border-radius: 6px; margin: 0 0 10px; padding: 10px; }
 .modes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
 .modes .label { font-weight: 600; font-size: .92rem; width: 100%; }
-.source-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px 12px; }
 .settings-links { list-style: none; }
 .inline-check { display: inline-flex; font-weight: 400; margin: 0 4px 0 0; }
 .admin-nav { margin-top: -.5rem; }

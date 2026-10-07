@@ -46,13 +46,7 @@
   </div>
   <button type="button" class="btn btn-secondary btn-small" id="add-rule">+ Another place</button>
 
-  <h2>Sources to search</h2>
-  {% if errors.source_ids %}<p class="field-error">{{ errors.source_ids }}</p>{% endif %}
-  <div class="source-picks">
-    {% for s in sources %}
-    <label class="check"><input type="checkbox" name="source_ids" value="{{ s.id }}"{% if s.id|string in data.source_ids %} checked{% endif %}> {{ s.name }}{% if not s.enabled %} <span class="muted">(disabled)</span>{% endif %}</label>
-    {% endfor %}
-  </div>
+  <p class="muted">Every enabled job source is searched for this position: Job Bank, your watchlist and your job-alert emails.</p>
 
   <p><button type="submit" class="btn">Save</button> <a href="/settings/profiles" class="btn btn-secondary">Cancel</a></p>
 </form>

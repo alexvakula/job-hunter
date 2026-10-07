@@ -416,3 +416,17 @@ def test_daily_schedule(two_users, session, monkeypatch):
     assert calls == [(uid, "daily")]  # already ran today
     assert dbmod  # silence unused import warning in some linters
     assert json  # used by other tests in this module
+
+
+def test_job_bank_searched_whatever_sources_were_ticked(two_users, session, app):
+    alice, _ = two_users
+    uid = _uid(session)
+    qa_lead(session, uid, sources=[])  # an old position with nothing ticked
+    fake = FakeFetcher(standard_routes())
+    app.dependency_overrides[get_fetcher] = lambda: fake
+    app.dependency_overrides[get_launcher] = lambda: lambda job: job()
+    try:
+        alice.post("/sources/import")
+    finally:
+        app.dependency_overrides.clear()
+    assert any("jobbank" in u for _, u, _ in fake.calls)

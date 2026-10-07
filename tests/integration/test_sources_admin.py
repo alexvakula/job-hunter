@@ -93,7 +93,6 @@ def test_delete_unused_source_removes_it_from_profiles(make_user, user_client, s
             "name": "P",
             "rules-0-place": "Calgary",
             "rules-0-remote": "1",
-            "source_ids": str(eluta.id),
         },
     )
     assert admin.post(f"/admin/sources/{eluta.id}/delete").status_code == 400

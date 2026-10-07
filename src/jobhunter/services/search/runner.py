@@ -220,9 +220,7 @@ def _run_jobbank(session, user_id, profiles, fetcher, stats: SourceStats) -> Non
     if source is None or not source.enabled:
         return
     seen_urls: set[str] = set()
-    for profile, rules in profiles:
-        if source.id not in profile.source_ids:
-            continue
+    for profile, rules in profiles:  # every target position is searched on every source
         for url in jobbank.queries(profile, rules):
             res = fetcher.fetch(url, source)
             if res.status != FETCHED:

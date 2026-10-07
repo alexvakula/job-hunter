@@ -7,7 +7,7 @@ from sqlmodel import Session, select
 from jobhunter import repo
 from jobhunter.auth.sessions import csrf_protect, current_user
 from jobhunter.db import get_session
-from jobhunter.models import LocationRule, Source, TargetProfile, UserAccount
+from jobhunter.models import LocationRule, TargetProfile, UserAccount
 from jobhunter.routes.detail import WORK_MODE_LABELS
 from jobhunter.services import profiles as svc
 from jobhunter.web import render
@@ -32,7 +32,6 @@ def _form_context(
                 include_keywords=", ".join(profile.include_keywords),
                 exclude_keywords=", ".join(profile.exclude_keywords),
                 seniority=profile.seniority or "",
-                source_ids=[str(i) for i in profile.source_ids],
                 rules=[
                     svc.RuleInput(
                         place=r.place,
@@ -49,12 +48,6 @@ def _form_context(
         "data": data,
         "rows": rows,
         "errors": errors or {},
-        # Disabled sources are hidden unless this profile already uses them (FR-028).
-        "sources": [
-            s
-            for s in db.exec(select(Source).order_by(Source.name)).all()
-            if s.enabled or str(s.id) in data.source_ids
-        ],
         "rule_modes": [(m, WORK_MODE_LABELS[m]) for m in svc.RULE_MODES],
     }
 
