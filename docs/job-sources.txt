@@ -36,6 +36,10 @@ Company watchlist: public job boards of chosen employers
                (robots.txt only disallows /jobs/embed*.php)
   HiBob        https://<company>.careers.hibob.com/         list: /api/job-ad with the companyIdentifier
                header the career site sends (no robots.txt)
+  SmartRecruiters https://careers.smartrecruiters.com/<company>[?search=<words>]   the public careers
+               page, its /api/groups and /api/more pages (jobs grouped by place) and each job's
+               page for the description; api.smartrecruiters.com is never used (its robots.txt
+               disallows all). ?search= keeps one brand of a group, e.g. Copperleaf at IFS
   How:   paste a company's careers link (a link to any one job works too; Phenom and
          SuccessFactors sites are recognised from that one page), or import a CSV of
          companies; boards on Greenhouse, Lever, Ashby, Pinpoint, Rippling, JazzHR and BambooHR are found
@@ -49,8 +53,7 @@ Company watchlist: public job boards of chosen employers
          is read as RFC 9309 defines it (most specific rule wins); at most 1 request per second per API
          host, 5 seconds between requests to the same careers site
   Not supported: Dayforce (its job search refuses requests from outside its own app), iCIMS,
-         Taleo, SmartRecruiters (robots.txt disallows its whole API host), sites behind a bot
-         challenge (e.g. SAP)
+         Taleo, sites behind a bot challenge (e.g. SAP)
          and companies' own sites (e.g. GlobalLogic);
          add those jobs by pasting a link or the posting text
 

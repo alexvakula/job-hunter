@@ -26,6 +26,7 @@ MAX_ROWS = 10_000
 UNSUPPORTED_LINK = (
     "This careers link isn't from a job board the app can read. Supported: Greenhouse, Lever, "
     "Ashby, Workday, Pinpoint, Rippling, JazzHR (applytojob.com), Jobvite, BambooHR, HiBob, "
+    "SmartRecruiters, "
     "Eightfold, Phenom, SuccessFactors and Oracle Cloud career sites. On the company's careers "
     "page, open one job and paste the link of that job page."
 )
@@ -44,6 +45,7 @@ BOARD_LABELS = {
     "oracle": "Oracle Cloud",
     "bamboohr": "BambooHR",
     "hibob": "HiBob",
+    "smartrecruiters": "SmartRecruiters",
     "unknown": "—",
 }
 

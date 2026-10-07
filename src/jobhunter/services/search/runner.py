@@ -5,6 +5,7 @@ import logging
 import threading
 from dataclasses import dataclass, field
 from datetime import timedelta
+from urllib.parse import unquote
 
 from sqlmodel import Session, delete, select
 
@@ -123,6 +124,7 @@ DETAIL_SOURCES = {
     "workday": "Workday",
     "successfactors": "SuccessFactors",
     "bamboohr": "BambooHR",
+    "smartrecruiters": "SmartRecruiters",
 }
 
 
@@ -135,8 +137,13 @@ def _fetch_detail(session, posting: Posting, fetcher) -> tuple | None:
     res = fetcher.fetch(posting.detail_url, src, max_bytes=JSON_MAX_BYTES)
     if res.status != FETCHED:
         return None
-    if kind == "successfactors":
-        d = boards.successfactors_detail(res.html)
+    if kind in ("successfactors", "smartrecruiters"):
+        read = (
+            boards.successfactors_detail
+            if kind == "successfactors"
+            else boards.smartrecruiters_detail
+        )
+        d = read(res.html)
         return d["location"], d["work_mode"], d["description"]
     try:
         data = json.loads(res.html)
@@ -248,6 +255,7 @@ SOURCE_FOR_BOARD = {
     "oracle": "Oracle Cloud",
     "bamboohr": "BambooHR",
     "hibob": "HiBob",
+    "smartrecruiters": "SmartRecruiters",
 }
 
 
@@ -282,9 +290,55 @@ def _read_pages(fetcher, source, board, company_name, search_text, limit, offset
             return postings, total, None
 
 
+SR_MAX_REQUESTS = 60  # per SmartRecruiters board and run
+
+
+def _read_smartrecruiters(fetcher, source, board, company_name):
+    """The careers page, its other group pages, then the rest of each larger place group."""
+    budget = [SR_MAX_REQUESTS]
+
+    def get(url):
+        budget[0] -= 1
+        return fetcher.fetch(url, source, max_bytes=JSON_MAX_BYTES)
+
+    res = get(boards.smartrecruiters_url(board))
+    if res.status != FETCHED:
+        return [], res.message or res.status
+    pages = [res.html]
+    total, current = boards.smartrecruiters_pages(res.html)
+    for page in range(current + 1, total):
+        if budget[0] <= 0:
+            break
+        more = get(boards.smartrecruiters_url(board, "groups", page=page))
+        if more.status != FETCHED:
+            return _sr_postings(pages, company_name), more.message or more.status
+        pages.append(more.html)
+    postings = _sr_postings(pages, company_name)
+    for place in boards.smartrecruiters_more("".join(pages)):
+        label = unquote(place)
+        for page in range(1, 50):
+            if budget[0] <= 0:
+                break
+            url = boards.smartrecruiters_url(board, "more", type="location", value=place, page=page)
+            more = get(url)
+            if more.status != FETCHED:
+                break
+            found = boards.parse_smartrecruiters_more(more.html, company_name, label)
+            postings += found
+            if len(found) < boards.SR_GROUP_JOBS:
+                break
+    return list({p.url: p for p in postings}.values()), None
+
+
+def _sr_postings(pages, company_name):
+    return [p for html in pages for p in boards.parse_smartrecruiters(html, company_name)]
+
+
 def _read_board(fetcher, source, board, company_name, titles):
     """A board's postings. Paged boards with more jobs than their PAGED_LIMITS (big
     employers) are searched once per target title instead of being read in full."""
+    if board.type == "smartrecruiters":
+        return _read_smartrecruiters(fetcher, source, board, company_name)
     limits = boards.paged_limits(board)
     if limits is None:
         postings, _total, error = _read_pages(fetcher, source, board, company_name, "", 0)

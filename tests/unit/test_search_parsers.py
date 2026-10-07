@@ -217,6 +217,14 @@ def test_jobbank_feed_parsing():
         ),
         ("https://showpass.bamboohr.com/careers/143", ("bamboohr", "showpass", None, None)),
         ("https://helcim.careers.hibob.com/jobs/446c", ("hibob", "helcim", None, None)),
+        (
+            "https://careers.smartrecruiters.com/IFS1?search=copperleaf",
+            ("smartrecruiters", "IFS1", None, "copperleaf"),
+        ),
+        (
+            "https://jobs.smartrecruiters.com/IFS1/744000103561181-senior-product-manager",
+            ("smartrecruiters", "IFS1", None, None),
+        ),
     ],
 )
 def test_parse_board_link(url, expected):
@@ -501,3 +509,27 @@ def test_hibob_parser():
     assert boards.list_request(board)[1] == "https://acme.careers.hibob.com/api/job-ad"
     assert boards.list_headers(board) == {"companyIdentifier": "acme"}
     assert boards.parse_list(board, "[]", "Acme") == []
+
+
+def test_smartrecruiters_parser():
+    board = boards.Board("smartrecruiters", "acme", site="asset planning")
+    page = (FIX / "smartrecruiters_page.html").read_text()
+    ps = boards.parse_list(board, page, "Acme")
+    assert len(ps) == 11  # the "Show more jobs" entry is not a job
+    assert (ps[0].title, ps[0].location, ps[0].work_mode) == ("QA Lead", "Calgary, AB", "hybrid")
+    assert ps[0].url == "https://jobs.smartrecruiters.com/acme/101-qa-lead"
+    assert ps[1].location == "Toronto, ON" and ps[1].work_mode is None
+    assert boards.smartrecruiters_pages(page) == (2, 0)
+    assert boards.smartrecruiters_more(page) == ["Toronto%2C%20ON"]
+    more = boards.parse_smartrecruiters_more(
+        (FIX / "smartrecruiters_more.html").read_text(), "Acme", "Toronto, ON"
+    )
+    assert more[0].title == "Test Lead & Coach" and more[0].work_mode == "remote"
+    assert boards.smartrecruiters_url(board, "groups", page=1) == (
+        "https://careers.smartrecruiters.com/acme/api/groups?search=asset%20planning&page=1"
+    )
+    assert board.careers_url == "https://careers.smartrecruiters.com/acme?search=asset%20planning"
+    d = boards.smartrecruiters_detail((FIX / "smartrecruiters_job.html").read_text())
+    assert d["location"] == "Calgary, AB, Canada"
+    assert "Lead testing of our asset planning software." in d["description"]
+    assert "8+ years in QA" in d["description"] and "boilerplate" not in d["description"]

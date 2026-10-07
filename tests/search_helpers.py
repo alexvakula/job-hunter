@@ -82,4 +82,11 @@ def standard_routes():
         "https://acme.bamboohr.com/careers/": "bamboohr_detail.json",
         "https://acme.careers.hibob.com/api/job-ad": "hibob_jobs.json",
         "https://careers.deloitte.ca/sitemap.xml": "successfactors_feed.xml",
+        "https://careers.smartrecruiters.com/acme?": "smartrecruiters_page.html",
+        "https://careers.smartrecruiters.com/acme/api/groups?": "smartrecruiters_groups.html",
+        (
+            "https://careers.smartrecruiters.com/acme/api/more?search=&type=location"
+            "&value=Toronto%2C%20ON&page=1"
+        ): "smartrecruiters_more.html",
+        "https://jobs.smartrecruiters.com/acme/": "smartrecruiters_job.html",
     }

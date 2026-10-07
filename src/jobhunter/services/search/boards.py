@@ -70,6 +70,8 @@ class Board:
             "oracle": f"https://{self.host}/hcmUI/CandidateExperience/en/sites/{self.board_id}",
             "bamboohr": f"https://{self.board_id}.bamboohr.com/careers",
             "hibob": f"https://{self.board_id}.careers.hibob.com/",
+            "smartrecruiters": f"https://careers.smartrecruiters.com/{self.board_id}"
+            + (f"?search={quote(self.site)}" if self.site else ""),
         }[self.type]
 
 
@@ -115,6 +117,12 @@ def parse_board_link(url: str) -> Board | None:
         return Board("jobvite", segments[0])
     if m := _ORACLE_SITE.search(parts.path):
         return Board("oracle", m.group(1), host=host) if _DOMAIN.match(host) else None
+    if host in ("careers.smartrecruiters.com", "jobs.smartrecruiters.com") and segments:
+        # careers.smartrecruiters.com/<company>?search=<words> keeps only the matching jobs, e.g.
+        # one brand of a group (Copperleaf at IFS)
+        search = (parse_qs(parts.query).get("search") or [""])[0].strip()[:100] or None
+        if _SLUG.match(segments[0]) and segments[0] not in _NOT_COMPANY:
+            return Board("smartrecruiters", segments[0], site=search)
     if sub := _company_subdomain(host, "bamboohr.com"):
         return Board("bamboohr", sub)
     if sub := _company_subdomain(host, "careers.hibob.com"):
@@ -180,6 +188,8 @@ def list_request(board: Board, search: str = "", offset: int = 0) -> tuple[str, 
         return "GET", f"https://{board.board_id}.bamboohr.com/careers/list", None
     if board.type == "hibob":
         return "GET", f"https://{board.board_id}.careers.hibob.com/api/job-ad", None
+    if board.type == "smartrecruiters":
+        return "GET", smartrecruiters_url(board), None
     if board.type == "eightfold":
         return (
             "GET",
@@ -769,6 +779,112 @@ def parse_hibob(data: dict, board: Board, company: str) -> list[Posting]:
     return out
 
 
+# SmartRecruiters' public careers page (careers.smartrecruiters.com; the API host's robots.txt
+# disallows everything, so it is never used). Jobs come grouped by place: the first page and
+# /api/groups?page=N list the groups, each showing up to 10 jobs; /api/more?type=location&value=..
+# &page=N lists the rest of a group, 10 at a time.
+SR_GROUP_JOBS = 10
+_SR_SECTION = re.compile(r'<section[^>]*class="openings-section[^"]*"[^>]*>(.*?)</section>', re.S)
+_SR_PLACE = re.compile(r'class="opening-title[^"]*"[^>]*>(.*?)</h3>', re.S)
+_SR_JOB = re.compile(
+    r'<a href="(https://jobs\.smartrecruiters\.com/[^"]+)"[^>]*>\s*<h4[^>]*>(.*?)</h4>(.*?)</a>',
+    re.S,
+)
+_SR_MODE = re.compile(r'content="Employees work ([^"]*)"')
+_SR_PAGES = re.compile(r'data-groups-pages="(\d+)"\s+data-page="(\d+)"')
+_SR_MORE = re.compile(r'data-value="([^"]+)"\s+data-type="location"')
+
+
+def _sr_mode(text: str) -> str | None:
+    m = _SR_MODE.search(text)
+    words = m.group(1).lower() if m else ""
+    if "hybrid" in words:
+        return "hybrid"
+    if "remote" in words:
+        return "remote"
+    return "onsite" if words else None
+
+
+def _sr_jobs(text: str, company: str, place: str | None) -> list[Posting]:
+    out = []
+    for url, title, rest in _SR_JOB.findall(text):
+        mode = _sr_mode(rest)
+        out.append(
+            Posting(
+                title=html_to_text(title),
+                url=url,
+                company=company,
+                location=place,
+                work_mode=mode,
+                remote=mode == "remote",
+                detail_url=url,
+                detail_kind="smartrecruiters",
+            )
+        )
+    return out
+
+
+def parse_smartrecruiters(text: str, company: str) -> list[Posting]:
+    """Jobs on one careers page or /api/groups page (grouped by place)."""
+    out = []
+    for section in _SR_SECTION.findall(text):
+        place = _SR_PLACE.search(section)
+        out += _sr_jobs(section, company, html_to_text(place.group(1)) if place else None)
+    return out
+
+
+def parse_smartrecruiters_more(text: str, company: str, place: str) -> list[Posting]:
+    """One /api/more page: further jobs of a place group."""
+    return _sr_jobs(text, company, place)
+
+
+def smartrecruiters_pages(text: str) -> tuple[int, int]:
+    """(group pages in all, the page this is) from the first careers page."""
+    m = _SR_PAGES.search(text)
+    return (int(m.group(1)), int(m.group(2))) if m else (0, 0)
+
+
+def smartrecruiters_more(text: str) -> list[str]:
+    """Places (URL-encoded, as the page gives them) whose group has more than it shows."""
+    return list(dict.fromkeys(_SR_MORE.findall(text)))
+
+
+def smartrecruiters_url(board: Board, kind: str = "", **params) -> str:
+    query = {"search": quote(board.site or ""), **params}
+    path = f"/api/{kind}" if kind else ""
+    tail = "&".join(f"{k}={v}" for k, v in query.items())  # values come encoded or are numbers
+    return f"https://careers.smartrecruiters.com/{board.board_id}{path}?{tail}"
+
+
+_SR_META = re.compile(
+    r'itemprop="(addressLocality|addressRegion|addressCountry|datePosted)"\s+content="([^"]*)"'
+)
+_SR_DESC = re.compile(
+    r'<section class="job-section" id="st-(?:jobDescription|qualifications|additionalInformation)">'
+    r"(.*?)</section>",
+    re.S,
+)
+
+
+def smartrecruiters_detail(text: str) -> dict:
+    meta = dict(_SR_META.findall(text))
+    place = ", ".join(
+        v
+        for v in (
+            meta.get("addressLocality"),
+            meta.get("addressRegion"),
+            meta.get("addressCountry"),
+        )
+        if v
+    )
+    parts = _SR_DESC.findall(text)
+    return {
+        "location": place or None,
+        "work_mode": None,
+        "description": _html_text(*[p[:30_000] for p in parts]) if parts else None,
+    }
+
+
 def total_jobs(board: Board, text: str) -> int:
     """How many jobs the board reports for this list or search (paged boards)."""
     try:
@@ -797,6 +913,8 @@ def parse_list(board: Board, text: str, company: str) -> list[Posting]:
         return parse_jazzhr(text, company)
     if board.type == "jobvite":
         return parse_jobvite(text, company)
+    if board.type == "smartrecruiters":
+        return parse_smartrecruiters(text, company)
     try:
         data = json.loads(text)
     except ValueError:

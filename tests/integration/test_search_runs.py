@@ -105,6 +105,7 @@ def test_more_boards_are_searched(two_users, session, app):
     _watch(session, uid, "bamboohr", name="Acme bamboohr")
     _watch(session, uid, "hibob", name="Acme hibob")
     _watch(session, uid, "successfactors", "d", "careers.deloitte.ca", "feed", name="Deloitte")
+    _watch(session, uid, "smartrecruiters", name="Acme sr")
     routes = standard_routes()
     routes.pop("https://www.jobbank.gc.ca/jobsearch/feed/")
     fake = FakeFetcher(routes)
@@ -134,9 +135,26 @@ def test_more_boards_are_searched(two_users, session, app):
         ("Acme pinpoint", "QA Lead"),
         ("Acme rippling", "QA Lead"),
         ("Acme sf", "QA Lead"),
+        ("Acme sr", "QA Lead"),
+        ("Acme sr", "Test Lead & Coach"),  # from the place group's "more" page
     ]
     feed_calls = [u for _, u, _ in fake.calls if "deloitte" in u]
     assert feed_calls == ["https://careers.deloitte.ca/sitemap.xml"]  # one request, not paged
+    sr_calls = [u for _, u, _ in fake.calls if "careers.smartrecruiters.com" in u]
+    assert sr_calls == [
+        "https://careers.smartrecruiters.com/acme?search=",
+        "https://careers.smartrecruiters.com/acme/api/groups?search=&page=1",
+        # the Toronto group shows 10 of its jobs; the rest come in one more page (3 < 10)
+        "https://careers.smartrecruiters.com/acme/api/more?search=&type=location"
+        "&value=Toronto%2C%20ON&page=1",
+    ]
+    sr = session.exec(
+        select(JobSuggestion).where(
+            JobSuggestion.company == "Acme sr", JobSuggestion.title == "QA Lead"
+        )
+    ).one()
+    assert sr.work_mode == "hybrid" and "asset planning software" in sr.description
+    assert "boilerplate" not in sr.description
     companies = session.exec(select(WatchCompany).where(WatchCompany.user_id == uid)).all()
     assert {c.status for c in companies} == {"ok"}
     assert fake.headers["https://acme.careers.hibob.com/api/job-ad"] == {
