@@ -21,7 +21,7 @@ from jobhunter.models import (
     TailoredResume,
     UserAccount,
 )
-from jobhunter.services import resumes
+from jobhunter.services import drafts, resumes
 from jobhunter.services.resume import apply_email, ats, importer, model, tailor, versions
 from jobhunter.web import render
 
@@ -384,6 +384,9 @@ def compose_new(
     master = _master(db, user)
     name = model.normalise(master.data)["name"] if master else user.display_name
     compose = apply_email.defaults(db, job, name, t.cover_letter if t else "")
+    saved = drafts.find(db, user.id, job_id=job.id)
+    if saved is not None and request.query_params.get("fresh") != "1":
+        compose = drafts.as_compose(saved, compose)
     return render(
         request,
         "resume/compose.html",
@@ -392,7 +395,34 @@ def compose_new(
         errors={},
         choices=_attachment_choices(db, user, job),
         sender=db.get(SenderSettings, user.id),
+        saved=saved,
+        fresh=request.query_params.get("fresh") == "1",
+        just_saved=request.query_params.get("saved") == "1",
     )
+
+
+@router.post("/jobs/{job_id}/apply/save", dependencies=[Depends(csrf_protect)])
+async def save_draft(
+    job_id: int,
+    request: Request,
+    user: UserAccount = Depends(current_user),
+    db: Session = Depends(get_session),
+):
+    job = repo.get_owned(db, Job, job_id, user.id)
+    compose, _ = apply_email.from_form(await request.form())  # a draft may be incomplete
+    drafts.save(db, user.id, compose, job_id=job.id)
+    return RedirectResponse(f"/jobs/{job.id}/apply/compose?saved=1", status_code=303)
+
+
+@router.post("/jobs/{job_id}/apply/discard", dependencies=[Depends(csrf_protect)])
+def discard_draft(
+    job_id: int,
+    user: UserAccount = Depends(current_user),
+    db: Session = Depends(get_session),
+):
+    job = repo.get_owned(db, Job, job_id, user.id)
+    drafts.discard(db, user.id, job_id=job.id)
+    return RedirectResponse("/mail?view=drafts", status_code=303)
 
 
 @router.post("/jobs/{job_id}/apply/send", dependencies=[Depends(csrf_protect)])
@@ -436,6 +466,8 @@ async def send(
             error=att_error or "Tick “I have reviewed this email” to send it.",
         )
     ok, message = await run_in_threadpool(apply_email.send, db, user, sender, job, compose, files)
+    if ok:
+        drafts.discard(db, user.id, job_id=job.id)
     return render(
         request, "resume/sent.html", status_code=200 if ok else 502, job=job, ok=ok, message=message
     )

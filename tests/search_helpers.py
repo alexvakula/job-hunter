@@ -48,8 +48,10 @@ class FakeFetcher:
         self.routes = routes or {}
         self.calls: list[tuple[str, str, dict | None]] = []
 
-    def fetch(self, url, source, *, method="GET", json_body=None, max_bytes=0):
+    def fetch(self, url, source, *, method="GET", json_body=None, max_bytes=0, headers=None):
         self.calls.append((method, url, dict(json_body) if json_body else None))
+        self.headers = getattr(self, "headers", {})
+        self.headers[url] = headers
         for prefix, answer in self.routes.items():
             if url.startswith(prefix):
                 if isinstance(answer, tuple):
@@ -76,4 +78,7 @@ def standard_routes():
         "https://careers.acme.example/search/": "successfactors_search.html",
         "https://careers.acme.example/job/Calgary-QA-Lead-AB/1001/": "successfactors_job.html",
         "https://abcd.fa.us2.oraclecloud.com/hcmRestApi/": "oracle_requisitions.json",
+        "https://acme.bamboohr.com/careers/list": "bamboohr_list.json",
+        "https://acme.bamboohr.com/careers/": "bamboohr_detail.json",
+        "https://acme.careers.hibob.com/api/job-ad": "hibob_jobs.json",
     }

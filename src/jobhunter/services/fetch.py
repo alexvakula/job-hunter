@@ -52,17 +52,25 @@ def _host_matches(host: str, domain: str) -> bool:
 
 def match_source(session: Session, url: str) -> Source:
     """Source whose domain matches the URL (disabled sources still match, FR-028), else Manual."""
-    host = _host(url)
     sources = session.exec(select(Source).order_by(Source.id)).all()
     manual = next(s for s in sources if s.type == "manual")
-    if not host:
-        return manual
-    best, best_len = manual, 0
-    for source in sources:
+    return source_for_url(sources, url) or manual
+
+
+def source_for_url(sources: list[Source], url: str) -> Source | None:
+    """The source with the longest domain matching the URL's host, if any."""
+    host = _host(url)
+    best, best_len = None, 0
+    for source in sources if host else []:
         for domain in source.domains or []:
             if _host_matches(host, domain) and len(domain) > best_len:
                 best, best_len = source, len(domain)
     return best
+
+
+def site_of(url: str) -> str:
+    """The URL's host without www., for showing where a link points."""
+    return _host(url)
 
 
 def _default_resolver(host: str) -> list[str]:
@@ -169,6 +177,7 @@ class Fetcher:
         method: str = "GET",
         json_body: dict | None = None,
         max_bytes: int = MAX_BYTES,
+        headers: dict[str, str] | None = None,
     ) -> FetchResult:
         if not (source.fetch_allowed and source.enabled):
             return FetchResult(
@@ -190,8 +199,11 @@ class Fetcher:
                 )
             self._throttle(_host(current))
             try:
-                headers = {"Accept": "application/json"} if method != "GET" or json_body else None
-                with self._client.stream(method, current, json=json_body, headers=headers) as resp:
+                sent = {"Accept": "application/json"} if method != "GET" or json_body else {}
+                sent.update(headers or {})
+                with self._client.stream(
+                    method, current, json=json_body, headers=sent or None
+                ) as resp:
                     if resp.is_redirect:
                         location = resp.headers.get("location")
                         if not location:

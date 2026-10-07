@@ -77,8 +77,9 @@ def test_csv_import_and_discovery(two_users, session, inline):
         "api.rippling.com",
         "app.jazz.co",
     }
-    assert all(h in board_hosts or h.endswith(".pinpointhq.com") for h in hosts)
+    assert all(h in board_hosts or h.endswith((".pinpointhq.com", ".bamboohr.com")) for h in hosts)
     assert "gamma.pinpointhq.com" in hosts and "api.rippling.com" in hosts
+    assert "gamma.bamboohr.com" in hosts
     page = alice.get("/watchlist").text
     assert "3 of 3 checked, 2 job boards found" in page and "board not found" in page
     # a company without a board can be given its link by hand

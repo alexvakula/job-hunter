@@ -10,10 +10,10 @@ from sqlmodel import Session, SQLModel, select
 from jobhunter.models import (
     ClaudeJob,
     DocumentVersion,
+    EmailDraft,
     EmailMessage,
     Job,
     JobSuggestion,
-    ReplyDraft,
     ResumeFile,
     SearchRun,
     TailoredResume,
@@ -33,7 +33,7 @@ OWNED_TOP_LEVEL = (
     TailoredResume,
     DocumentVersion,
     ClaudeJob,
-    ReplyDraft,
+    EmailDraft,
 )
 
 

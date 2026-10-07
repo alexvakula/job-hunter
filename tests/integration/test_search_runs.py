@@ -102,6 +102,8 @@ def test_more_boards_are_searched(two_users, session, app):
     _watch(session, uid, "phenom", "h1", "jobs.acme.example", "ca/en", name="Acme phenom")
     _watch(session, uid, "successfactors", "h2", "careers.acme.example", name="Acme sf")
     _watch(session, uid, "oracle", "CX_1", "abcd.fa.us2.oraclecloud.com", name="Acme oracle")
+    _watch(session, uid, "bamboohr", name="Acme bamboohr")
+    _watch(session, uid, "hibob", name="Acme hibob")
     routes = standard_routes()
     routes.pop("https://www.jobbank.gc.ca/jobsearch/feed/")
     fake = FakeFetcher(routes)
@@ -121,7 +123,9 @@ def test_more_boards_are_searched(two_users, session, app):
         ).all()
     )
     assert got == [
+        ("Acme bamboohr", "QA Lead"),
         ("Acme eightfold", "QA Lead"),
+        ("Acme hibob", "QA Lead"),
         ("Acme jazzhr", "QA Lead"),
         ("Acme jobvite", "QA Lead & Test Architect"),
         ("Acme oracle", "QA Lead"),
@@ -132,6 +136,15 @@ def test_more_boards_are_searched(two_users, session, app):
     ]
     companies = session.exec(select(WatchCompany).where(WatchCompany.user_id == uid)).all()
     assert {c.status for c in companies} == {"ok"}
+    assert fake.headers["https://acme.careers.hibob.com/api/job-ad"] == {
+        "companyIdentifier": "acme"
+    }
+    bamboo = session.exec(
+        select(JobSuggestion).where(JobSuggestion.company == "Acme bamboohr")
+    ).one()
+    assert "ticketing platform & mobile apps" in bamboo.description  # from the job's detail
+    hibob = session.exec(select(JobSuggestion).where(JobSuggestion.company == "Acme hibob")).one()
+    assert hibob.work_mode == "hybrid"
 
 
 class BigWorkday(FakeFetcher):

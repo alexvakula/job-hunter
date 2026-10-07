@@ -10,7 +10,7 @@
   {% if state == st %}<strong>{{ label }}</strong>{% else %}<a href="/suggestions?state={{ st }}">{{ label }}</a>{% endif %}{% if st != 'all' %} ({{ counts.get(st, 0) }}){% endif %}{% if not loop.last %} · {% endif %}{% endfor %}</p>
 {% if suggestions %}
 <div class="table-wrap"><table>
-  <thead><tr><th>Match</th><th>Fit</th><th>Job</th><th>Company</th><th>Location</th><th>From</th><th></th></tr></thead>
+  <thead><tr><th>Claude fit</th><th>Match</th><th>Job</th><th>Company</th><th>Location</th><th>Source</th><th>Found by</th><th></th></tr></thead>
   <tbody>
   {% for s in suggestions %}
   <tr>
@@ -20,7 +20,8 @@
       {% if s.score_reasons %}<br><span class="muted small">{{ s.score_reasons|join(' · ') }}</span>{% endif %}
       {% if s.fit_reason %}<br><span class="small">Claude: {{ s.fit_reason }}</span>{% endif %}</td>
     <td>{{ s.company or '' }}</td><td>{{ s.location or '' }}</td>
-    <td class="muted">{{ {'jobbank': 'Job Bank search', 'watchlist': 'Watchlist', 'claude': 'Claude'}.get(s.origin, sources.get(s.source_id, '')) }}{% if s.email_id %} · <a href="/mail/{{ s.email_id }}">alert</a>{% endif %}</td>
+    <td>{{ sites.get(s.id, '') }}</td>
+    <td class="muted">{{ {'jobbank': 'Job Bank search', 'watchlist': 'Watchlist', 'claude': 'Claude'}.get(s.origin, 'Job alert') }}{% if s.email_id %} · <a href="/mail/{{ s.email_id }}">email</a>{% endif %}</td>
     <td>
       {% if s.state == 'new' %}
       <form method="post" action="/suggestions/{{ s.id }}/add" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><button type="submit" class="btn btn-small">Add</button></form>

@@ -12,19 +12,19 @@ import re
 from email.message import EmailMessage as MimeMessage
 from email.utils import formataddr, formatdate, make_msgid
 
-from sqlmodel import Session, select
+from sqlmodel import Session
 
 from jobhunter.config import get_settings
-from jobhunter.db import to_local, utcnow
+from jobhunter.db import to_local
 from jobhunter.models import (
+    EmailDraft,
     EmailMessage,
     Job,
-    ReplyDraft,
     SenderSettings,
     Status,
     UserAccount,
 )
-from jobhunter.services import mailer, outbox
+from jobhunter.services import drafts, mailer, outbox
 from jobhunter.services.resume.apply_email import Compose
 
 QUOTE_LIMIT = 8000
@@ -174,10 +174,8 @@ def send(
 # --- drafts --------------------------------------------------------------------------------
 
 
-def draft_for(session: Session, user_id: int, email_id: int) -> ReplyDraft | None:
-    return session.exec(
-        select(ReplyDraft).where(ReplyDraft.user_id == user_id, ReplyDraft.email_id == email_id)
-    ).first()
+def draft_for(session: Session, user_id: int, email_id: int) -> EmailDraft | None:
+    return drafts.find(session, user_id, email_id=email_id)
 
 
 def save_draft(
@@ -187,17 +185,11 @@ def save_draft(
     compose: Compose,
     intent: str | None,
     by_claude: bool = False,
-) -> ReplyDraft:
-    draft = draft_for(session, user_id, email_id) or ReplyDraft(user_id=user_id, email_id=email_id)
-    draft.to_addrs, draft.subject, draft.body = compose.to, compose.subject, compose.body
-    draft.intent, draft.by_claude, draft.updated_at = intent, by_claude, utcnow()
-    session.add(draft)
-    session.commit()
-    return draft
+) -> EmailDraft:
+    return drafts.save(
+        session, user_id, compose, email_id=email_id, intent=intent, by_claude=by_claude
+    )
 
 
 def discard_draft(session: Session, user_id: int, email_id: int) -> None:
-    draft = draft_for(session, user_id, email_id)
-    if draft is not None:
-        session.delete(draft)
-        session.commit()
+    drafts.discard(session, user_id, email_id=email_id)

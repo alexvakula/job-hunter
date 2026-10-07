@@ -92,8 +92,8 @@ def _already_suggested(session, user_id, url_norm) -> bool:
 
 
 def _fill_detail(session, posting: Posting, fetcher, budget, url_norm: str) -> None:
-    """Completes a posting from its board's job detail (Greenhouse description; Workday and
-    SuccessFactors places and description; Workday work mode). Details are cached for
+    """Completes a posting from its board's job detail (Greenhouse and BambooHR description;
+    Workday and SuccessFactors places and description; Workday work mode). Details are cached for
     DETAIL_TTL, so each job costs one request from the per-run budget however often listed."""
     if not (posting.detail_url and url_norm):
         return
@@ -122,6 +122,7 @@ DETAIL_SOURCES = {
     "greenhouse": "Greenhouse",
     "workday": "Workday",
     "successfactors": "SuccessFactors",
+    "bamboohr": "BambooHR",
 }
 
 
@@ -143,6 +144,9 @@ def _fetch_detail(session, posting: Posting, fetcher) -> tuple | None:
         return None
     if kind == "greenhouse":
         return None, None, boards.greenhouse_detail(data)
+    if kind == "bamboohr":
+        d = boards.bamboohr_detail(data)
+        return d["location"], d["work_mode"], d["description"]
     d = boards.workday_detail(data)
     return d["location"], d["work_mode"], d["description"]
 
@@ -244,6 +248,8 @@ SOURCE_FOR_BOARD = {
     "phenom": "Phenom",
     "successfactors": "SuccessFactors",
     "oracle": "Oracle Cloud",
+    "bamboohr": "BambooHR",
+    "hibob": "HiBob",
 }
 
 
@@ -263,7 +269,10 @@ def _read_pages(fetcher, source, board, company_name, search_text, limit, offset
     total = 0
     while True:
         method, url, body = boards.list_request(board, search_text, offset)
-        res = fetcher.fetch(url, source, method=method, json_body=body, max_bytes=JSON_MAX_BYTES)
+        extra = {"headers": h} if (h := boards.list_headers(board)) else {}
+        res = fetcher.fetch(
+            url, source, method=method, json_body=body, max_bytes=JSON_MAX_BYTES, **extra
+        )
         if res.status != FETCHED:
             return postings, total, res.message or res.status
         page = boards.parse_list(board, res.html, company_name)

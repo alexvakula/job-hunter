@@ -438,7 +438,7 @@ class WatchCompany(SQLModel, table=True):
     name: str = Field(max_length=200)
     website: str | None = None
     # greenhouse | lever | ashby | workday | pinpoint | rippling | jazzhr | jobvite |
-    # eightfold | phenom | successfactors | oracle | unknown
+    # eightfold | phenom | successfactors | oracle | bamboohr | hibob | unknown
     board_type: str = "unknown"
     board_id: str | None = None
     board_host: str | None = None  # e.g. acme.wd3.myworkdayjobs.com, or a Phenom/SF career site
@@ -567,19 +567,26 @@ class NotificationSettings(SQLModel, table=True):
     updates_checked_at: datetime | None = None
 
 
-class ReplyDraft(SQLModel, table=True):
-    """An unsent reply to an email (one per email), saved by the user or written by Claude."""
+class EmailDraft(SQLModel, table=True):
+    """An unsent email (Mail → Drafts): a reply to one email, or the application email for one
+    job. One draft per email / per job, saved by the user or (replies) written by Claude."""
 
-    __tablename__ = "reply_draft"
-    __table_args__ = (Index("ux_reply_draft_user_email", "user_id", "email_id", unique=True),)
+    __tablename__ = "email_draft"
+    __table_args__ = (
+        Index("ux_email_draft_user_email", "user_id", "email_id", unique=True),
+        Index("ux_email_draft_user_job", "user_id", "job_id", unique=True),
+    )
 
     id: int | None = Field(default=None, primary_key=True)
     user_id: int = Field(sa_column=_fk("user_account.id"))
-    email_id: int = Field(sa_column=_fk("email_message.id"))
+    kind: str = "reply"  # reply (email_id set) | application (job_id set)
+    email_id: int | None = Field(default=None, sa_column=_fk("email_message.id", nullable=True))
+    job_id: int | None = Field(default=None, sa_column=_fk("job.id", nullable=True))
     to_addrs: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     subject: str = ""
     body: str = ""
-    intent: str | None = None  # continue | withdraw
+    attachments: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    intent: str | None = None  # replies: continue | withdraw
     by_claude: bool = False
     updated_at: datetime = Field(default_factory=utcnow)
 

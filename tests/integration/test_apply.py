@@ -273,3 +273,34 @@ def test_failed_send_keeps_status(sendable, session, monkeypatch):
     job = session.get(Job, job_id)
     session.refresh(job)
     assert job.status == "new"
+
+
+def test_application_draft_save_resume_send(sendable):
+    alice, bob_client, job_id, sent = sendable
+    data = {
+        "to": "jane@acmerobotics.com",
+        "subject": "Application: QA Lead",
+        "body": "Dear Jane, half-written",
+    }
+    r = alice.post(f"/jobs/{job_id}/apply/save", data=data)
+    assert r.status_code == 303 and r.headers["location"] == f"/jobs/{job_id}/apply/compose?saved=1"
+    page = alice.get(f"/jobs/{job_id}/apply/compose").text
+    assert "Dear Jane, half-written" in page and "Your saved draft" in page
+    assert "Dear Jane, half-written" not in alice.get(f"/jobs/{job_id}/apply/compose?fresh=1").text
+    drafts = alice.get("/mail?view=drafts").text
+    assert f"/jobs/{job_id}/apply/compose" in drafts and ">Application</span>" in drafts
+    assert "Application: QA Lead" not in bob_client.get("/mail?view=drafts").text
+    assert bob_client.post(f"/jobs/{job_id}/apply/save", data=data).status_code == 404
+
+    resp, form = _preview(alice, job_id)
+    token = re.search(r'name="token" value="([^"]+)"', resp.text).group(1)
+    alice.post(f"/jobs/{job_id}/apply/send", data={**form, "token": token, "confirm": "yes"})
+    assert len(sent) == 1
+    assert "No drafts" in alice.get("/mail?view=drafts").text
+
+
+def test_application_draft_discard(sendable):
+    alice, _, job_id, _ = sendable
+    alice.post(f"/jobs/{job_id}/apply/save", data={"body": "draft"})
+    r = alice.post(f"/jobs/{job_id}/apply/discard")
+    assert r.status_code == 303 and "No drafts" in alice.get("/mail?view=drafts").text

@@ -13,18 +13,18 @@ from jobhunter.config import smtp_password_env_name, smtp_password_for
 from jobhunter.db import get_session
 from jobhunter.models import (
     EmailAttachment,
+    EmailDraft,
     EmailMessage,
     Job,
     JobSuggestion,
     MailboxSettings,
-    ReplyDraft,
     Source,
     UserAccount,
 )
 from jobhunter.routes.detail import WORK_MODE_LABELS
 from jobhunter.routes.watchlist import get_launcher
 from jobhunter.services import imap_client, mail_store, mailbox, profiles, reply
-from jobhunter.services.fetch import get_fetcher
+from jobhunter.services.fetch import get_fetcher, site_of, source_for_url
 from jobhunter.services.jobs import manual_source
 from jobhunter.services.resumes import sanitize_name
 from jobhunter.web import render
@@ -221,26 +221,27 @@ def mail_list(
 
 
 def _draft_count(db: Session, user: UserAccount) -> int:
-    return db.exec(select(func.count()).where(ReplyDraft.user_id == user.id)).one()
+    return db.exec(select(func.count()).where(EmailDraft.user_id == user.id)).one()
 
 
 def _drafts(request: Request, db: Session, user: UserAccount, q: str):
     stmt = (
-        select(ReplyDraft, EmailMessage)
-        .join(EmailMessage, EmailMessage.id == ReplyDraft.email_id)
-        .where(ReplyDraft.user_id == user.id)
+        select(EmailDraft, EmailMessage)
+        .outerjoin(EmailMessage, EmailMessage.id == EmailDraft.email_id)
+        .where(EmailDraft.user_id == user.id)
     )
     if q.strip():
         needle = q.strip().lower()
         stmt = stmt.where(
             or_(
-                func.lower(ReplyDraft.subject).contains(needle, autoescape=True),
-                func.lower(ReplyDraft.body).contains(needle, autoescape=True),
+                func.lower(EmailDraft.subject).contains(needle, autoescape=True),
+                func.lower(EmailDraft.body).contains(needle, autoescape=True),
+                func.lower(EmailDraft.to_addrs).contains(needle, autoescape=True),
                 func.lower(EmailMessage.from_addr).contains(needle, autoescape=True),
                 func.lower(EmailMessage.from_name).contains(needle, autoescape=True),
             )
         )
-    drafts = db.exec(stmt.order_by(ReplyDraft.updated_at.desc(), ReplyDraft.id.desc())).all()
+    drafts = db.exec(stmt.order_by(EmailDraft.updated_at.desc(), EmailDraft.id.desc())).all()
     return render(
         request,
         "mail/list.html",
@@ -383,7 +384,16 @@ def suggestions(
             JobSuggestion.id.desc(),
         )
     ).all()
-    sources = {s.id: s.name for s in db.exec(select(Source)).all()}
+    all_sources = db.exec(select(Source).order_by(Source.id)).all()
+    sources = {s.id: s.name for s in all_sources}
+    # Where each job is posted: the recorded source, else the site its link points to.
+    sites = {}
+    for s in rows:
+        if s.source_id in sources:
+            sites[s.id] = sources[s.source_id]
+        else:
+            found = source_for_url(all_sources, s.url)
+            sites[s.id] = found.name if found else site_of(s.url)
     counts = dict(
         db.exec(
             select(JobSuggestion.state, func.count())
@@ -397,6 +407,7 @@ def suggestions(
         suggestions=rows,
         state=state,
         sources=sources,
+        sites=sites,
         counts=counts,
     )
 

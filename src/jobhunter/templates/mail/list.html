@@ -28,23 +28,25 @@
 </form>
 
 {% if folder == 'drafts' %}
-<p class="muted">{{ total }} draft{{ '' if total == 1 else 's' }}. Unsent replies you saved, and replies Claude wrote for you.</p>
+<p class="muted">{{ total }} draft{{ '' if total == 1 else 's' }}. Unsent replies and application emails you saved, and replies Claude wrote for you.</p>
 {% if drafts %}
 <div class="table-wrap"><table>
   <thead><tr><th>Saved</th><th>To</th><th>Subject</th><th>Job</th></tr></thead>
   <tbody>
   {% for d, e in drafts %}
+  {% set job_id = d.job_id if d.kind == 'application' else (e.job_id if e else none) %}
   <tr>
     <td class="muted">{{ d.updated_at|local_dt }}</td>
-    <td>→ {{ d.to_addrs|join(', ') or e.from_addr }}</td>
-    <td class="mail-subject"><a href="/mail/{{ e.id }}/reply">{{ d.subject or '(no subject)' }}</a>
+    <td>→ {{ d.to_addrs|join(', ') or (e.from_addr if e else '(no recipient yet)') }}</td>
+    <td class="mail-subject"><a href="{{ '/jobs/%d/apply/compose'|format(d.job_id) if d.kind == 'application' else '/mail/%d/reply'|format(e.id) }}">{{ d.subject or '(no subject)' }}</a>
+      {% if d.kind == 'application' %} <span class="badge">Application</span>{% endif %}
       {% if d.intent %} <span class="badge">{{ intents[d.intent].label }}</span>{% endif %}{% if d.by_claude %} <span class="badge">Claude</span>{% endif %}</td>
-    <td>{% if e.job_id and jobs.get(e.job_id) %}<a href="/jobs/{{ e.job_id }}">{{ jobs[e.job_id].company }}</a>{% endif %}</td>
+    <td>{% if job_id and jobs.get(job_id) %}<a href="/jobs/{{ job_id }}">{{ jobs[job_id].company }}</a>{% endif %}</td>
   </tr>
   {% endfor %}
   </tbody>
 </table></div>
-{% else %}<p class="card muted">No drafts. Use <strong>Save draft</strong> on a reply to keep it here.</p>{% endif %}
+{% else %}<p class="card muted">No drafts. Use <strong>Save draft</strong> on a reply or an application email to keep it here.</p>{% endif %}
 {% else %}
 <p class="muted">{{ total }} email{{ '' if total == 1 else 's' }}</p>
 {% if emails %}

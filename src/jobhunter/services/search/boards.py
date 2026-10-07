@@ -1,7 +1,8 @@
 """Company job boards: link parsing and readers (FR-003, FR-008).
 
 Greenhouse, Lever, Ashby and Workday (feature 003); Pinpoint, Rippling, JazzHR, Jobvite,
-Eightfold, Phenom, SuccessFactors and Oracle Cloud (feature 007). Each is read through the
+Eightfold, Phenom, SuccessFactors and Oracle Cloud (feature 007); BambooHR and HiBob. Each is
+read through the
 provider's public job feed, public search API or public search page, as the career site does.
 """
 
@@ -55,6 +56,8 @@ class Board:
             "phenom": f"https://{self.host}/{self.site}/search-results",
             "successfactors": f"https://{self.host}/search/",
             "oracle": f"https://{self.host}/hcmUI/CandidateExperience/en/sites/{self.board_id}",
+            "bamboohr": f"https://{self.board_id}.bamboohr.com/careers",
+            "hibob": f"https://{self.board_id}.careers.hibob.com/",
         }[self.type]
 
 
@@ -100,6 +103,10 @@ def parse_board_link(url: str) -> Board | None:
         return Board("jobvite", segments[0])
     if m := _ORACLE_SITE.search(parts.path):
         return Board("oracle", m.group(1), host=host) if _DOMAIN.match(host) else None
+    if sub := _company_subdomain(host, "bamboohr.com"):
+        return Board("bamboohr", sub)
+    if sub := _company_subdomain(host, "careers.hibob.com"):
+        return Board("hibob", sub)
     if sub := _company_subdomain(host, "eightfold.ai"):
         domain = (parse_qs(parts.query).get("domain") or [f"{sub}.com"])[0].lower()
         return Board("eightfold", sub, site=domain) if _DOMAIN.match(domain) else None
@@ -156,6 +163,10 @@ def list_request(board: Board, search: str = "", offset: int = 0) -> tuple[str, 
         return "GET", f"https://app.jazz.co/feeds/export/jobs/{board.board_id}", None
     if board.type == "jobvite":
         return "GET", f"https://jobs.jobvite.com/{board.board_id}/jobs", None
+    if board.type == "bamboohr":
+        return "GET", f"https://{board.board_id}.bamboohr.com/careers/list", None
+    if board.type == "hibob":
+        return "GET", f"https://{board.board_id}.careers.hibob.com/api/job-ad", None
     if board.type == "eightfold":
         return (
             "GET",
@@ -191,6 +202,13 @@ def list_request(board: Board, search: str = "", offset: int = 0) -> tuple[str, 
             "searchText": search,
         },
     )
+
+
+def list_headers(board: Board) -> dict[str, str] | None:
+    """Extra request headers a board's public API needs (HiBob: which company's board)."""
+    if board.type == "hibob":
+        return {"companyIdentifier": board.board_id}
+    return None
 
 
 def _ts(value) -> datetime | None:
@@ -605,6 +623,93 @@ def successfactors_detail(text: str) -> dict:
     }
 
 
+# BambooHR locationType: 0 on site, 1 remote, 2 hybrid
+_BAMBOO_MODES = {"0": "onsite", "1": "remote", "2": "hybrid"}
+
+
+def parse_bamboohr(data: dict, board: Board, company: str) -> list[Posting]:
+    out = []
+    base = f"https://{board.board_id}.bamboohr.com/careers"
+    for j in (data or {}).get("result") or []:
+        if not (j.get("id") and j.get("jobOpeningName")):
+            continue
+        loc = j.get("location") or {}
+        ats = j.get("atsLocation") or {}
+        place = _places(
+            ", ".join(
+                p
+                for p in (
+                    loc.get("city") or ats.get("city"),
+                    loc.get("state") or ats.get("state") or ats.get("province"),
+                    ats.get("country"),
+                )
+                if p
+            )
+        )
+        mode = "remote" if j.get("isRemote") else _BAMBOO_MODES.get(str(j.get("locationType")))
+        out.append(
+            Posting(
+                title=j["jobOpeningName"],
+                url=f"{base}/{j['id']}",
+                company=company,
+                location=place,
+                work_mode=mode,
+                remote=mode == "remote",
+                detail_url=f"{base}/{j['id']}/detail",
+                detail_kind="bamboohr",
+            )
+        )
+    return out
+
+
+def bamboohr_detail(data: dict) -> dict:
+    job = ((data or {}).get("result") or {}).get("jobOpening") or {}
+    loc = job.get("location") or {}
+    return {
+        "location": _places(
+            ", ".join(
+                p for p in (loc.get("city"), loc.get("state"), loc.get("addressCountry")) if p
+            )
+        ),
+        "work_mode": None,
+        "description": _html_text(job.get("description")),
+    }
+
+
+_HIBOB_MODES = {"remote": "remote", "hybrid": "hybrid", "office": "onsite", "onsite": "onsite"}
+
+
+def parse_hibob(data: dict, board: Board, company: str) -> list[Posting]:
+    out = []
+    base = f"https://{board.board_id}.careers.hibob.com/jobs"
+    for j in (data or {}).get("jobAdDetails") or []:
+        if not (j.get("id") and j.get("title")):
+            continue
+        mode = _HIBOB_MODES.get(str(j.get("workspaceTypeId") or "").lower())
+        low, high = j.get("payTransparencyMinSalary"), j.get("payTransparencyMaxSalary")
+        currency = j.get("payTransparencySalaryCurrency")
+        period = str(j.get("payTransparencySalaryPayPeriod") or "").lower()
+        out.append(
+            Posting(
+                title=j["title"],
+                url=f"{base}/{j['id']}",
+                company=company,
+                location=_places(", ".join(p for p in (j.get("site"), j.get("country")) if p)),
+                description=_html_text(
+                    j.get("description"), j.get("responsibilities"), j.get("requirements")
+                ),
+                work_mode=mode,
+                remote=mode == "remote",
+                posted_at=_ts(j.get("publishedAt")),
+                salary_min=int(low) if isinstance(low, int | float) else None,
+                salary_max=int(high) if isinstance(high, int | float) else None,
+                currency=currency if currency in ("CAD", "USD") else None,
+                period="hour" if "hour" in period else "year" if low or high else None,
+            )
+        )
+    return out
+
+
 def total_jobs(board: Board, text: str) -> int:
     """How many jobs the board reports for this list or search (paged boards)."""
     try:
@@ -651,4 +756,8 @@ def parse_list(board: Board, text: str, company: str) -> list[Posting]:
         return parse_eightfold(data, board, company)
     if board.type == "oracle":
         return parse_oracle(data, board, company)
+    if board.type == "bamboohr":
+        return parse_bamboohr(data, board, company)
+    if board.type == "hibob":
+        return parse_hibob(data, board, company)
     return parse_workday(data, board, company)

@@ -1,5 +1,5 @@
-"""Finding a company's public job board on Greenhouse, Lever, Ashby, Pinpoint, Rippling or JazzHR
-(FR-010; feature 007). Jobvite and Workday boards are added by pasting a link.
+"""Finding a company's public job board on Greenhouse, Lever, Ashby, Pinpoint, Rippling, JazzHR
+or BambooHR (FR-010; feature 007). Jobvite and Workday boards are added by pasting a link.
 
 Only the boards' public APIs are contacted (never the company's own website), at most one
 request per second per service. Progress is stored per company, so it resumes after restarts.
@@ -28,6 +28,7 @@ SERVICES = (
     ("pinpoint", "Pinpoint"),
     ("rippling", "Rippling"),
     ("jazzhr", "JazzHR"),
+    ("bamboohr", "BambooHR"),
 )
 _SUFFIXES = {
     "inc",
@@ -89,6 +90,8 @@ def _exists(fetcher: Fetcher, source: Source, board: Board) -> bool:
         return isinstance(data, list)
     if board.type == "pinpoint":
         return isinstance(data, dict) and isinstance(data.get("data"), list)
+    if board.type == "bamboohr":
+        return isinstance(data, dict) and isinstance(data.get("result"), list)
     return isinstance(data, dict) and isinstance(data.get("jobs"), list)
 
 

@@ -215,6 +215,8 @@ def test_jobbank_feed_parsing():
             "https://careers.acme.example/hcmUI/CandidateExperience/en/sites/careers",
             ("oracle", "careers", "careers.acme.example", None),
         ),
+        ("https://showpass.bamboohr.com/careers/143", ("bamboohr", "showpass", None, None)),
+        ("https://helcim.careers.hibob.com/jobs/446c", ("hibob", "helcim", None, None)),
     ],
 )
 def test_parse_board_link(url, expected):
@@ -233,6 +235,8 @@ def test_parse_board_link(url, expected):
         "https://ats.rippling.com/",
         "https://jobs.jobvite.com/",
         "https://jobs.dayforcehcm.com/en-US/acme/CANDIDATEPORTAL",
+        "https://www.bamboohr.com/careers",
+        "https://www.hibob.com/careers",
         "not a url",
     ],
 )
@@ -434,3 +438,42 @@ def test_discovery_candidates():
         "societe-generale",
     ]
     assert candidates("AB", None) == ["ab"]
+
+
+def test_bamboohr_parser():
+    board = boards.Board("bamboohr", "acme")
+    ps = boards.parse_list(board, (FIX / "bamboohr_list.json").read_text(), "Acme")
+    assert [p.title for p in ps] == [
+        "QA Lead",
+        "Full Stack Developer \u2013 Product Engineering",
+        "Support Specialist",
+    ]
+    assert ps[0].url == "https://acme.bamboohr.com/careers/143"
+    assert ps[0].location == "Calgary, Alberta" and ps[0].work_mode == "hybrid"
+    assert ps[1].work_mode == "onsite" and not ps[1].remote
+    assert ps[2].location == "Toronto, Ontario, Canada" and ps[2].remote
+    assert ps[0].detail_url == "https://acme.bamboohr.com/careers/143/detail"
+    assert ps[0].detail_kind == "bamboohr"
+    d = boards.bamboohr_detail(json.loads((FIX / "bamboohr_detail.json").read_text()))
+    assert d["location"] == "Calgary, Alberta, Canada"
+    assert "Lead testing of our ticketing platform & mobile apps." in d["description"]
+    assert boards.list_request(board)[1] == "https://acme.bamboohr.com/careers/list"
+    assert boards.list_headers(board) is None
+    assert boards.parse_list(board, "{}", "Acme") == []
+
+
+def test_hibob_parser():
+    board = boards.Board("hibob", "acme")
+    ps = boards.parse_list(board, (FIX / "hibob_jobs.json").read_text(), "Acme")
+    qa, analyst = ps
+    assert qa.url == "https://acme.careers.hibob.com/jobs/446c36ce-d53f-4007-97c6-748b9a62e3c6"
+    assert qa.location == "Calgary, Canada" and qa.work_mode == "hybrid"
+    assert "Acme is searching for a QA Lead." in qa.description
+    assert "Own our quality strategy & tooling" in qa.description
+    assert "6+ years of test automation" in qa.description
+    assert (qa.salary_min, qa.salary_max, qa.currency, qa.period) == (140000, 160000, "CAD", "year")
+    assert qa.posted_at.year == 2026 and qa.posted_at.tzinfo is not None
+    assert analyst.work_mode == "onsite" and analyst.salary_min is None and analyst.period is None
+    assert boards.list_request(board)[1] == "https://acme.careers.hibob.com/api/job-ad"
+    assert boards.list_headers(board) == {"companyIdentifier": "acme"}
+    assert boards.parse_list(board, "[]", "Acme") == []

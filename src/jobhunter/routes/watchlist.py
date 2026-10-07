@@ -25,9 +25,9 @@ MAX_CSV_BYTES = 5 * 1024 * 1024
 MAX_ROWS = 10_000
 UNSUPPORTED_LINK = (
     "This careers link isn't from a job board the app can read. Supported: Greenhouse, Lever, "
-    "Ashby, Workday, Pinpoint, Rippling, JazzHR (applytojob.com), Jobvite, Eightfold, Phenom, "
-    "SuccessFactors and Oracle Cloud career sites. On the company's careers page, open one job "
-    "and paste the link of that job page."
+    "Ashby, Workday, Pinpoint, Rippling, JazzHR (applytojob.com), Jobvite, BambooHR, HiBob, "
+    "Eightfold, Phenom, SuccessFactors and Oracle Cloud career sites. On the company's careers "
+    "page, open one job and paste the link of that job page."
 )
 BOARD_LABELS = {
     "greenhouse": "Greenhouse",
@@ -42,6 +42,8 @@ BOARD_LABELS = {
     "phenom": "Phenom",
     "successfactors": "SuccessFactors",
     "oracle": "Oracle Cloud",
+    "bamboohr": "BambooHR",
+    "hibob": "HiBob",
     "unknown": "—",
 }
 

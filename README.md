@@ -14,7 +14,8 @@ A small, self-hosted job-search tracker for one family, running at
 - **reply to emails** from the job mailbox, by hand or drafted by Claude, with one-click
   "continue the interview process" and "withdraw my application" replies (always previewed and
   confirmed before sending; withdrawing can also mark the job as withdrawn); Mail is organised
-  into **Inbox, Drafts and Sent**, and unsent replies (yours or Claude's) wait under Drafts,
+  into **Inbox, Drafts and Sent**, and unsent replies (yours or Claude's) and application
+  emails wait under Drafts,
 - get **Telegram updates** as they come: new suggestions, emails from employers, finished Claude
   tasks (opt in under Settings → Notifications),
 - keep a structured **master resume** (imported from the uploaded DOCX/PDF) and **apply from the
@@ -30,8 +31,8 @@ A small, self-hosted job-search tracker for one family, running at
   external sites are ever stored),
 - get **automatic searches** every morning at 06:00: Job Bank (official feed) for each target
   position, and a **company watchlist** checked through the public job boards of Greenhouse, Lever,
-  Ashby, Workday, Pinpoint, Rippling, JazzHR, Jobvite, Eightfold, Phenom, SuccessFactors and
-  Oracle Cloud; lists such as ABTEC 5000 can be imported as CSV and their boards are found
+  Ashby, Workday, Pinpoint, Rippling, JazzHR, Jobvite, BambooHR, HiBob, Eightfold, Phenom,
+  SuccessFactors and Oracle Cloud; lists such as ABTEC 5000 can be imported as CSV and their boards are found
   automatically; results are scored 0–100 and sorted best-first in Suggestions,
 - keep their original resume (DOCX/PDF), and set up and test their sender email.
 

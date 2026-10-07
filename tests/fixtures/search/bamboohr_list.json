@@ -1,0 +1,5 @@
+{"meta": {"totalCount": 3}, "result": [
+ {"id": "143", "jobOpeningName": "QA Lead", "departmentId": "18650", "departmentLabel": "Product & Engineering", "employmentStatusLabel": "Full-Time", "employmentType": null, "location": {"city": "Calgary", "state": "Alberta"}, "atsLocation": {"country": null, "state": null, "province": null, "city": null}, "isRemote": null, "locationType": "2"},
+ {"id": "144", "jobOpeningName": "Full Stack Developer – Product Engineering", "departmentId": "18650", "departmentLabel": "Product & Engineering", "employmentStatusLabel": "Full-Time", "employmentType": null, "location": {"city": "Calgary", "state": "Alberta"}, "atsLocation": {"country": null, "state": null, "province": null, "city": null}, "isRemote": null, "locationType": "0"},
+ {"id": "150", "jobOpeningName": "Support Specialist", "location": {"city": null, "state": null}, "atsLocation": {"country": "Canada", "state": null, "province": "Ontario", "city": "Toronto"}, "isRemote": true, "locationType": "1"}
+]}
