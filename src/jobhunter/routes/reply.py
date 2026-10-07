@@ -94,8 +94,12 @@ def reply_page(
     email = _email(db, email_id, user)
     intent = reply.intent_of(intent)
     compose, drafted = reply.defaults(email), None
+    saved = reply.draft_for(db, user.id, email.id)
     if intent:
         compose.body = reply.template(email, _job(db, email), intent, _name(db, user))
+    elif saved is not None and draft is None:
+        compose = reply.defaults(email, saved.subject, saved.body)
+        compose.to, intent = saved.to_addrs or compose.to, saved.intent
     if draft is not None:
         job = repo.get_owned(db, ClaudeJob, draft, user.id)
         if (
@@ -106,7 +110,17 @@ def reply_page(
             raise repo.not_found()
         compose = reply.defaults(email, job.result["subject"], job.result["body"])
         drafted, intent = job, reply.intent_of(job.payload.get("intent"))
-    return _compose_page(request, db, user, email, compose, intent=intent, drafted=drafted)
+    return _compose_page(
+        request,
+        db,
+        user,
+        email,
+        compose,
+        intent=intent,
+        drafted=drafted,
+        saved=saved,
+        just_saved=request.query_params.get("saved") == "1",
+    )
 
 
 @router.post("/mail/{email_id}/reply/claude", dependencies=[Depends(csrf_protect)])
@@ -171,6 +185,31 @@ async def reply_edit(
     return _compose_page(
         request, db, user, email, compose, intent=reply.intent_of(form.get("intent"))
     )
+
+
+@router.post("/mail/{email_id}/reply/save", dependencies=[Depends(csrf_protect)])
+async def reply_save(
+    email_id: int,
+    request: Request,
+    user: UserAccount = Depends(current_user),
+    db: Session = Depends(get_session),
+):
+    email = _email(db, email_id, user)
+    form = await request.form()
+    compose, _ = apply_email.from_form(form)  # a draft may be incomplete
+    reply.save_draft(db, user.id, email.id, compose, reply.intent_of(form.get("intent")))
+    return RedirectResponse(f"/mail/{email.id}/reply?saved=1", status_code=303)
+
+
+@router.post("/mail/{email_id}/reply/discard", dependencies=[Depends(csrf_protect)])
+def reply_discard(
+    email_id: int,
+    user: UserAccount = Depends(current_user),
+    db: Session = Depends(get_session),
+):
+    email = _email(db, email_id, user)
+    reply.discard_draft(db, user.id, email.id)
+    return RedirectResponse("/mail?view=drafts", status_code=303)
 
 
 @router.post("/mail/{email_id}/reply/send", dependencies=[Depends(csrf_protect)])

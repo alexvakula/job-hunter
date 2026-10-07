@@ -13,7 +13,8 @@ A small, self-hosted job-search tracker for one family, running at
   export jobs as **CSV**, and (admin, with Claude) generate **interview prep** and company notes,
 - **reply to emails** from the job mailbox, by hand or drafted by Claude, with one-click
   "continue the interview process" and "withdraw my application" replies (always previewed and
-  confirmed before sending; withdrawing can also mark the job as withdrawn),
+  confirmed before sending; withdrawing can also mark the job as withdrawn); Mail is organised
+  into **Inbox, Drafts and Sent**, and unsent replies (yours or Claude's) wait under Drafts,
 - get **Telegram updates** as they come: new suggestions, emails from employers, finished Claude
   tasks (opt in under Settings → Notifications),
 - keep a structured **master resume** (imported from the uploaded DOCX/PDF) and **apply from the

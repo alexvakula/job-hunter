@@ -567,6 +567,23 @@ class NotificationSettings(SQLModel, table=True):
     updates_checked_at: datetime | None = None
 
 
+class ReplyDraft(SQLModel, table=True):
+    """An unsent reply to an email (one per email), saved by the user or written by Claude."""
+
+    __tablename__ = "reply_draft"
+    __table_args__ = (Index("ux_reply_draft_user_email", "user_id", "email_id", unique=True),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(sa_column=_fk("user_account.id"))
+    email_id: int = Field(sa_column=_fk("email_message.id"))
+    to_addrs: list[str] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
+    subject: str = ""
+    body: str = ""
+    intent: str | None = None  # continue | withdraw
+    by_claude: bool = False
+    updated_at: datetime = Field(default_factory=utcnow)
+
+
 class JobPrep(SQLModel, table=True):
     """Claude interview-prep and company notes for one job (admin only)."""
 

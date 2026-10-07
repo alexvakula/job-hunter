@@ -3,5 +3,5 @@
 {% block content %}
 <h1>{{ 'Reply sent' if ok else 'Not sent' }}</h1>
 <p class="{{ 'flash' if ok else 'error' }}">{{ message }}</p>
-<p><a href="/mail/{{ email.id }}" class="btn">Back to the email</a>{% if email.job_id %} <a href="/jobs/{{ email.job_id }}" class="btn btn-secondary">The job</a>{% endif %} <a href="/mail?view=sent" class="btn btn-secondary">Sent emails</a></p>
+<p><a href="/mail/{{ email.id }}" class="btn">Back to the email</a>{% if email.job_id %} <a href="/jobs/{{ email.job_id }}" class="btn btn-secondary">The job</a>{% endif %} <a href="/mail?view=sent" class="btn btn-secondary">Sent</a></p>
 {% endblock %}

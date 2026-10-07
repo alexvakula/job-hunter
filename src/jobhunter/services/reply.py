@@ -12,11 +12,18 @@ import re
 from email.message import EmailMessage as MimeMessage
 from email.utils import formataddr, formatdate, make_msgid
 
-from sqlmodel import Session
+from sqlmodel import Session, select
 
 from jobhunter.config import get_settings
-from jobhunter.db import to_local
-from jobhunter.models import EmailMessage, Job, SenderSettings, Status, UserAccount
+from jobhunter.db import to_local, utcnow
+from jobhunter.models import (
+    EmailMessage,
+    Job,
+    ReplyDraft,
+    SenderSettings,
+    Status,
+    UserAccount,
+)
 from jobhunter.services import mailer, outbox
 from jobhunter.services.resume.apply_email import Compose
 
@@ -160,4 +167,37 @@ def send(
     )
     if not result.ok:
         return False, result.message
+    discard_draft(session, user.id, email.id)
     return True, f"Reply sent to {', '.join(compose.to)}."
+
+
+# --- drafts --------------------------------------------------------------------------------
+
+
+def draft_for(session: Session, user_id: int, email_id: int) -> ReplyDraft | None:
+    return session.exec(
+        select(ReplyDraft).where(ReplyDraft.user_id == user_id, ReplyDraft.email_id == email_id)
+    ).first()
+
+
+def save_draft(
+    session: Session,
+    user_id: int,
+    email_id: int,
+    compose: Compose,
+    intent: str | None,
+    by_claude: bool = False,
+) -> ReplyDraft:
+    draft = draft_for(session, user_id, email_id) or ReplyDraft(user_id=user_id, email_id=email_id)
+    draft.to_addrs, draft.subject, draft.body = compose.to, compose.subject, compose.body
+    draft.intent, draft.by_claude, draft.updated_at = intent, by_claude, utcnow()
+    session.add(draft)
+    session.commit()
+    return draft
+
+
+def discard_draft(session: Session, user_id: int, email_id: int) -> None:
+    draft = draft_for(session, user_id, email_id)
+    if draft is not None:
+        session.delete(draft)
+        session.commit()

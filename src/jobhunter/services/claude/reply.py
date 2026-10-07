@@ -106,8 +106,10 @@ def draft_reply(session: Session, user: UserAccount, job: ClaudeJob) -> Outcome:
         model=cli.model_for("reply"),
     )
     data = {"email_id": email.id, **out.data}
-    gaps = reply.placeholders(reply.defaults(email, body=data["body"]))
-    summary = "Reply draft ready."
+    compose = reply.defaults(email, data["subject"], data["body"])
+    reply.save_draft(session, user.id, email.id, compose, intent, by_claude=True)
+    gaps = reply.placeholders(compose)
+    summary = "Reply draft ready (saved in Mail → Drafts)."
     if gaps:
         summary += (
             f" Fill in {len(gaps)} placeholder{'s' if len(gaps) != 1 else ''} before sending."

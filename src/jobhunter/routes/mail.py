@@ -17,12 +17,13 @@ from jobhunter.models import (
     Job,
     JobSuggestion,
     MailboxSettings,
+    ReplyDraft,
     Source,
     UserAccount,
 )
 from jobhunter.routes.detail import WORK_MODE_LABELS
 from jobhunter.routes.watchlist import get_launcher
-from jobhunter.services import imap_client, mail_store, mailbox, profiles
+from jobhunter.services import imap_client, mail_store, mailbox, profiles, reply
 from jobhunter.services.fetch import get_fetcher
 from jobhunter.services.jobs import manual_source
 from jobhunter.services.resumes import sanitize_name
@@ -30,7 +31,8 @@ from jobhunter.web import render
 
 router = APIRouter()
 PAGE_SIZE = 50
-VIEWS = {"all", "linked", "unlinked", "alerts", "sent"}
+VIEWS = {"all", "linked", "unlinked", "alerts", "sent", "drafts"}
+INBOX_VIEWS = {"all", "linked", "unlinked", "alerts"}
 EMAIL_CSP = (
     "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; "
     "form-action 'self'; frame-ancestors 'none'; base-uri 'none'"
@@ -169,7 +171,11 @@ def mail_list(
     db: Session = Depends(get_session),
 ):
     view = view if view in VIEWS else "all"
+    if view == "drafts":
+        return _drafts(request, db, user, q)
     stmt = select(EmailMessage).where(EmailMessage.user_id == user.id)
+    if view in INBOX_VIEWS:
+        stmt = stmt.where(EmailMessage.direction == "in")
     if view == "linked":
         stmt = stmt.where(EmailMessage.job_id.is_not(None))
     elif view == "unlinked":
@@ -209,6 +215,47 @@ def mail_list(
         pages=max((total + PAGE_SIZE - 1) // PAGE_SIZE, 1),
         jobs=jobs,
         mailbox=_settings(db, user),
+        folder="sent" if view == "sent" else "inbox",
+        draft_count=_draft_count(db, user),
+    )
+
+
+def _draft_count(db: Session, user: UserAccount) -> int:
+    return db.exec(select(func.count()).where(ReplyDraft.user_id == user.id)).one()
+
+
+def _drafts(request: Request, db: Session, user: UserAccount, q: str):
+    stmt = (
+        select(ReplyDraft, EmailMessage)
+        .join(EmailMessage, EmailMessage.id == ReplyDraft.email_id)
+        .where(ReplyDraft.user_id == user.id)
+    )
+    if q.strip():
+        needle = q.strip().lower()
+        stmt = stmt.where(
+            or_(
+                func.lower(ReplyDraft.subject).contains(needle, autoescape=True),
+                func.lower(ReplyDraft.body).contains(needle, autoescape=True),
+                func.lower(EmailMessage.from_addr).contains(needle, autoescape=True),
+                func.lower(EmailMessage.from_name).contains(needle, autoescape=True),
+            )
+        )
+    drafts = db.exec(stmt.order_by(ReplyDraft.updated_at.desc(), ReplyDraft.id.desc())).all()
+    return render(
+        request,
+        "mail/list.html",
+        drafts=drafts,
+        emails=[],
+        total=len(drafts),
+        view="drafts",
+        q=q,
+        page=1,
+        pages=1,
+        jobs={j.id: j for j in db.exec(repo.scoped(Job, user.id)).all()},
+        mailbox=_settings(db, user),
+        folder="drafts",
+        draft_count=len(drafts) if not q.strip() else _draft_count(db, user),
+        intents=reply.INTENTS,
     )
 
 

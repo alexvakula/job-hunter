@@ -80,3 +80,7 @@ input.pos { width: 3.2rem; display: inline-block; margin: 0; padding: 4px; text-
 .skill-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .skill { border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; display: inline-flex; gap: 6px; align-items: center; }
 .skill label.check { margin: 0; font-weight: 400; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 0 0 16px; overflow-x: auto; }
+.tabs a { padding: 8px 14px; text-decoration: none; color: var(--muted); font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
+.tabs a:hover { color: var(--fg); }
+.tabs a.active { color: var(--accent); border-bottom-color: var(--accent); }

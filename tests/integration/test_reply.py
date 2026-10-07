@@ -149,7 +149,9 @@ def test_claude_draft(claude_user, session, mailer_stub):
         pass
     job = session.exec(select(ClaudeJob).where(ClaudeJob.kind == "reply")).one()
     assert job.status == "done", job.error
-    assert "1 placeholder" in job.summary
+    assert "1 placeholder" in job.summary and "Mail → Drafts" in job.summary
+    drafts = alice.get("/mail?view=drafts").text
+    assert f"/mail/{eid}/reply" in drafts and ">Claude</span>" in drafts
     call = fake.calls[0]
     assert call["argv"][call["argv"].index("--tools") + 1] == ""
     assert (
@@ -213,3 +215,50 @@ def test_continue_keeps_status_when_unticked(two_users, session, mailer_stub):
     from jobhunter.models import Job
 
     assert session.get(Job, job_id).status == "applied"
+
+
+def test_inbox_drafts_sent_folders(two_users, session, mailer_stub):
+    alice, bob = two_users
+    alice.post("/settings/sender", data=SENDER)
+    job_id = _job(alice)
+    eid = _incoming(session, _uid(session, "alice"), job_id)
+
+    inbox = alice.get("/mail").text
+    assert "Interview for QA Lead" in inbox and 'class="active" aria-current="page">Inbox' in inbox
+    assert "No drafts" in alice.get("/mail?view=drafts").text
+
+    # Save an incomplete draft (no recipient check for drafts), then find it under Drafts.
+    r = alice.post(
+        f"/mail/{eid}/reply/save",
+        data={
+            "to": "jane@acme.com",
+            "subject": "Re: Interview for QA Lead",
+            "body": "Hi Jane, draft text",
+            "intent": "withdraw",
+        },
+    )
+    assert r.status_code == 303 and r.headers["location"] == f"/mail/{eid}/reply?saved=1"
+    drafts = alice.get("/mail?view=drafts").text
+    assert "Hi Jane" not in drafts and "Re: Interview for QA Lead" in drafts
+    assert "Withdraw my application" in drafts and 'Drafts <span class="badge">1</span>' in drafts
+    assert "Re: Interview for QA Lead" not in bob.get("/mail?view=drafts").text
+    page = alice.get(f"/mail/{eid}/reply").text
+    assert "Hi Jane, draft text" in page and "Your saved draft" in page
+    assert 'name="intent" value="withdraw"' in page
+    assert bob.post(f"/mail/{eid}/reply/save", data={"body": "x"}).status_code == 404
+
+    # Sending removes the draft and the reply shows under Sent, not in the Inbox.
+    _, data, token = _preview(alice, eid)
+    alice.post(f"/mail/{eid}/reply/send", data={**data, "token": token, "confirm": "yes"})
+    assert "No drafts" in alice.get("/mail?view=drafts").text
+    sent = alice.get("/mail?view=sent").text
+    assert "→ jane@acme.com" in sent and "Re: Interview for QA Lead" in sent
+    assert "→ jane@acme.com" not in alice.get("/mail").text
+
+
+def test_discard_draft(two_users, session):
+    alice, _ = two_users
+    eid = _incoming(session, _uid(session, "alice"))
+    alice.post(f"/mail/{eid}/reply/save", data={"body": "keep me?"})
+    r = alice.post(f"/mail/{eid}/reply/discard")
+    assert r.status_code == 303 and "No drafts" in alice.get("/mail?view=drafts").text

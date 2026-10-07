@@ -13,6 +13,7 @@ from jobhunter.models import (
     EmailMessage,
     Job,
     JobSuggestion,
+    ReplyDraft,
     ResumeFile,
     SearchRun,
     TailoredResume,
@@ -32,6 +33,7 @@ OWNED_TOP_LEVEL = (
     TailoredResume,
     DocumentVersion,
     ClaudeJob,
+    ReplyDraft,
 )
 
 
