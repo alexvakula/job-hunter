@@ -203,16 +203,20 @@ def test_docx_is_ats_safe():
         assert all(not p.text.strip() for p in section.header.paragraphs)
         assert all(not p.text.strip() for p in section.footer.paragraphs)
     headings = [p.text for p in doc.paragraphs if p.style.name == "Heading 1"]
-    assert headings == ["Summary", "Experience", "Education", "Certifications", "Skills"]
-    text = "\n".join(p.text for p in doc.paragraphs)
-    assert "Société Générale Tech" in text and "Jan 2020 – Present" in text
-    assert "QA Lead — Northwind Imaging" in text
+    assert headings == ["SUMMARY", "SKILLS", "WORK EXPERIENCE", "EDUCATION", "CERTIFICATIONS"]
+    paras = [p.text for p in doc.paragraphs]
+    assert "Northwind Imaging, Calgary, AB   Jan 2020 – Present" in paras
+    assert (
+        paras[paras.index("Northwind Imaging, Calgary, AB   Jan 2020 – Present") + 1] == "QA Lead"
+    )
+    assert "Société Générale Tech, Montréal, QC   2015 – 2019" in paras
+    assert "- ISTQB Foundation - ISTQB, 2014" in paras
 
 
 def test_pdf_text_is_extractable_and_unicode():
     reader = PdfReader(io.BytesIO(render.resume_pdf(_snap())))
     text = "\n".join(p.extract_text() for p in reader.pages)
-    for needle in ("Sam Rivera", "Société Générale Tech", "Experience", "Skills", "Selenium"):
+    for needle in ("Sam Rivera", "Société Générale Tech", "WORK EXPERIENCE", "SKILLS", "Selenium"):
         assert needle in text
 
 
@@ -223,3 +227,89 @@ def test_letter_documents():
     assert "Para one continues." in paras and doc.tables == []
     text = PdfReader(io.BytesIO(render.letter_pdf(_snap(), letter))).pages[0].extract_text()
     assert "Para one continues." in text
+
+
+GROUPED = MASTER | {
+    "headline": "Test Automation Lead",
+    "skill_groups": [
+        {"label": "Automation", "skills": ["Selenium", "Python"]},
+        {"label": "Tools", "skills": ["Jira", "Postman", "Jenkins", "Python"]},
+    ],
+}
+
+
+def test_reference_layout_header_and_skill_groups():
+    doc = Document(
+        io.BytesIO(render.resume_docx(tailor.snapshot(GROUPED, tailor.build_draft(GROUPED, []))))
+    )
+    paras = [p.text for p in doc.paragraphs]
+    assert paras[:4] == [
+        "Sam Rivera",
+        "Calgary, AB, Tel.: 403-555-0100",
+        "sam.jobs@example.org | https://linkedin.com/in/samrivera",
+        "Test Automation Lead",
+    ]
+    rels = [r.target_ref for r in doc.part.rels.values() if r.reltype.endswith("/hyperlink")]
+    assert rels == ["https://linkedin.com/in/samrivera"]
+    assert "Automation: Selenium, Python" in paras
+    assert "Tools: Python, Jira, Postman, Jenkins" in paras  # in two groups; tailored order
+    assert "Other: Leadership, Agile, SQL" in paras  # skills outside every group
+
+
+def test_snapshot_skill_groups_follow_hidden_and_order():
+    draft = tailor.build_draft(GROUPED, [])
+    for s in draft["skills"]:
+        s["hidden"] = s["name"] in ("Python", "Leadership", "Agile", "SQL")
+    snap = tailor.snapshot(GROUPED, draft)
+    assert snap["skill_groups"] == [
+        {"label": "Automation", "skills": ["Selenium"]},
+        {"label": "Tools", "skills": ["Jira", "Postman", "Jenkins"]},
+    ]
+    # Without a headline the latest job title is used; without groups skills are one line.
+    plain = tailor.snapshot(MASTER, tailor.build_draft(MASTER, []))
+    assert plain["headline"] == "QA Lead"
+    assert plain["skill_groups"] == [{"label": "", "skills": MASTER["skills"]}]
+    # Documents generated before skill groups existed still render.
+    old = {k: v for k, v in plain.items() if k not in ("skill_groups", "headline")}
+    assert "Selenium" in "\n".join(
+        p.text for p in Document(io.BytesIO(render.resume_docx(old))).paragraphs
+    )
+
+
+def test_skills_box_groups_roundtrip():
+    skills, groups = model.parse_skills("Automation: Selenium, Python\nJira; SQL\nTools: Jira")
+    assert skills == ["Selenium", "Python", "Jira", "SQL"]
+    assert groups == [
+        {"label": "Automation", "skills": ["Selenium", "Python"]},
+        {"label": "Tools", "skills": ["Jira"]},
+    ]
+    data = model.normalise({"skills": skills, "skill_groups": groups})
+    assert model.skills_text(data) == "Automation: Selenium, Python\nTools: Jira\nSQL"
+    assert model.normalise({"skill_groups": groups})["skills"] == ["Selenium", "Python", "Jira"]
+
+
+def test_generated_resume_imports_back():
+    long = "Built a Selenium and Python framework " + "covering web, mobile and API suites " * 4
+    master = GROUPED | {
+        "experience": [
+            GROUPED["experience"][0] | {"bullets": [long.strip(), "Mentored 5 testers."]}
+        ]
+        + GROUPED["experience"][1:]
+    }
+    snap = tailor.snapshot(master, tailor.build_draft(master, []))
+    for fmt, data in (("docx", render.resume_docx(snap)), ("pdf", render.resume_pdf(snap))):
+        d = importer.import_resume(data, fmt)
+        assert d["headline"] == "Test Automation Lead", fmt
+        first, second = d["experience"]
+        assert (first["employer"], first["title"], first["location"]) == (
+            "Northwind Imaging",
+            "QA Lead",
+            "Calgary, AB",
+        ), fmt
+        assert (first["start"], first["end"]) == ("Jan 2020", "Present"), fmt
+        assert first["bullets"] == [long.strip(), "Mentored 5 testers."], fmt  # wrapped line joined
+        assert (second["employer"], second["title"]) == (
+            "Société Générale Tech",
+            "Senior QA Analyst",
+        )
+        assert d["skill_groups"] == snap["skill_groups"], fmt

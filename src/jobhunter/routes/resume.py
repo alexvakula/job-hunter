@@ -48,6 +48,7 @@ def _editor(request, db, user, data: dict, status_code=200, **extra):
         status_code=status_code,
         d=data,
         rows=rows,
+        skills_text=model.skills_text(data),
         current_file=current_file,
         **extra,
     )

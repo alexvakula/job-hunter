@@ -206,8 +206,10 @@ def test_import_with_claude_opens_unsaved(admin, session):
         "phone": "",
         "location": "",
         "links": [],
+        "headline": "Test Automation Lead",
         "summary": "QA leader.",
         "skills": ["Selenium"],
+        "skill_groups": [{"label": "Automation", "skills": ["Selenium", "Playwright"]}],
         "education": [],
         "certifications": [],
         "experience": [
@@ -228,6 +230,7 @@ def test_import_with_claude_opens_unsaved(admin, session):
     assert "Built a Selenium test automation framework." in fake.calls[0]["stdin"]
     page = alice.get(f"/resume/claude-import/{job.id}").text
     assert "Imported from" in page and 'value="QA Lead"' in page and "QA leader." in page
+    assert 'value="Test Automation Lead"' in page and "Automation: Selenium, Playwright" in page
     from jobhunter.models import MasterResume
 
     session.expire_all()

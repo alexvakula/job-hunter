@@ -24,6 +24,7 @@
   <h2>Contact</h2>
   <div class="row">
     <label>Full name <input name="name" value="{{ d.name }}"></label>
+    <label>Headline <input name="headline" value="{{ d.headline }}" placeholder="Software QA Lead"></label>
     <label>Email <input name="email" value="{{ d.email }}">{% if e.email %}<span class="field-error">{{ e.email }}</span>{% endif %}</label>
     <label>Phone <input name="phone" value="{{ d.phone }}"></label>
     <label>Location <input name="location" value="{{ d.location }}" placeholder="Calgary, AB"></label>
@@ -80,7 +81,7 @@
   <button type="button" class="btn btn-secondary btn-small" data-add-row="certifications">+ Another certification</button>
 
   <h2>Skills</h2>
-  <label>Comma- or line-separated <textarea name="skills" rows="3">{{ d.skills|join(', ') }}</textarea></label>
+  <label>One group per line as “Category: skill, skill”, or just comma-separated <textarea name="skills" rows="6" placeholder="Automation: Selenium, Playwright&#10;Tools: Jira, Postman">{{ skills_text }}</textarea></label>
   <p><button type="submit" class="btn">Save master resume</button></p>
 </form>
 {% endblock %}

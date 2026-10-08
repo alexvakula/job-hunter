@@ -369,9 +369,12 @@ IMPORT_SCHEMA = {
         "education",
         "certifications",
         "skills",
+        "headline",
+        "skill_groups",
     ],
     "properties": {
         "name": _ROW,
+        "headline": _ROW,
         "email": _ROW,
         "phone": _ROW,
         "location": _ROW,
@@ -414,6 +417,18 @@ IMPORT_SCHEMA = {
             },
         },
         "skills": {"type": "array", "items": {"type": "string", "maxLength": 100}},
+        "skill_groups": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["label", "skills"],
+                "properties": {
+                    "label": {"type": "string", "maxLength": 100},
+                    "skills": {"type": "array", "items": {"type": "string", "maxLength": 100}},
+                },
+            },
+        },
     },
 }
 
@@ -430,7 +445,10 @@ def import_resume(session: Session, user: UserAccount, job: ClaudeJob) -> Outcom
     prompt = (
         "Convert this resume into the JSON structure, copying facts exactly as written (do "
         "not improve, summarise or invent anything; use empty strings or lists for missing "
-        f"parts).\n\nRESUME TEXT:\n{text[:RESUME_LIMIT]}"
+        "parts). headline is the professional title under the contact details, if any. When "
+        'skills are listed under labels ("Tools: Jira, Postman"), give each label in '
+        "skill_groups and still list every skill in skills."
+        f"\n\nRESUME TEXT:\n{text[:RESUME_LIMIT]}"
     )
     out = cli.run(
         prompt, IMPORT_SCHEMA, [], OTHER_TIMEOUT, max_turns=3, model=cli.model_for("import")

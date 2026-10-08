@@ -84,8 +84,10 @@ def snapshot(master: dict, draft: dict) -> dict:
             {k: e.get(k, "") for k in ("employer", "title", "location", "start", "end")}
             | {"bullets": bullets}
         )
+    skills = [s["name"] for s in draft["skills"] if not s["hidden"]]
     return {
         "name": m["name"],
+        "headline": m["headline"] or (m["experience"][0]["title"] if m["experience"] else ""),
         "email": m["email"],
         "phone": m["phone"],
         "location": m["location"],
@@ -94,12 +96,30 @@ def snapshot(master: dict, draft: dict) -> dict:
         "experience": experience,
         "education": m["education"],
         "certifications": m["certifications"],
-        "skills": [s["name"] for s in draft["skills"] if not s["hidden"]],
+        "skills": skills,
+        "skill_groups": _skill_groups(m["skill_groups"], skills),
     }
 
 
+def _skill_groups(groups: list[dict], skills: list[str]) -> list[dict]:
+    """The master's skill groups holding only the shown skills, in tailored order."""
+    if not groups:
+        return [{"label": "", "skills": skills}] if skills else []
+    out, placed = [], set()
+    for g in groups:
+        members = set(g["skills"])  # a skill may sit in several groups, as on paper
+        shown = [s for s in skills if s in members]
+        placed |= members
+        if shown:
+            out.append({"label": g["label"], "skills": shown})
+    rest = [s for s in skills if s not in placed]
+    if rest:
+        out.append({"label": "Other", "skills": rest})
+    return out
+
+
 def visible_text(snap: dict) -> str:
-    parts = [snap["summary"], *snap["skills"]]
+    parts = [snap.get("headline", ""), snap["summary"], *snap["skills"]]
     for e in snap["experience"]:
         parts += [e["title"], e["employer"], *e["bullets"]]
     for e in snap["education"]:

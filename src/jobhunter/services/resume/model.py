@@ -8,13 +8,15 @@ SECTION_FIELDS = {
     "education": ("institution", "credential", "field", "start", "end"),
     "certifications": ("name", "issuer", "date"),
 }
-CONTACT_FIELDS = ("name", "email", "phone", "location")
+CONTACT_FIELDS = ("name", "headline", "email", "phone", "location")
 _KEY = re.compile(r"^(experience|education|certifications)-(\d+)-(\w+)$")
+_GROUP = re.compile(r"^([^:,;]{1,40}):\s*(.*)$")  # "Tools: Jira, Postman"
 
 
 def empty() -> dict:
     return {
         "name": "",
+        "headline": "",
         "email": "",
         "phone": "",
         "location": "",
@@ -24,6 +26,7 @@ def empty() -> dict:
         "education": [],
         "certifications": [],
         "skills": [],
+        "skill_groups": [],
     }
 
 
@@ -35,7 +38,30 @@ def normalise(data: dict | None) -> dict:
     for exp in out["experience"]:
         exp.setdefault("id", uuid.uuid4().hex[:8])
         exp.setdefault("bullets", [])
+    grouped = [s for g in out["skill_groups"] for s in g.get("skills", [])]
+    out["skills"] = list(dict.fromkeys([*out["skills"], *grouped]))
     return out
+
+
+def parse_skills(text: str) -> tuple[list[str], list[dict]]:
+    """Skills box → (skills, groups). A line "Label: a, b" is a group; other lines are plain."""
+    skills: list[str] = []
+    groups: list[dict] = []
+    for line in (text or "").splitlines():
+        m = _GROUP.match(line.strip())
+        items = [s.strip() for s in re.split(r"[,;]", m.group(2) if m else line) if s.strip()]
+        if m and items:
+            groups.append({"label": m.group(1).strip(), "skills": items})
+        skills += items
+    return list(dict.fromkeys(skills)), groups
+
+
+def skills_text(data: dict) -> str:
+    """The skills box: one "Label: a, b" line per group, then the ungrouped skills."""
+    lines = [f"{g['label']}: {', '.join(g['skills'])}" for g in data.get("skill_groups", [])]
+    grouped = {s for g in data.get("skill_groups", []) for s in g["skills"]}
+    rest = [s for s in data.get("skills", []) if s not in grouped]
+    return "\n".join(lines + ([", ".join(rest)] if rest else []))
 
 
 def _lines(text: str) -> list[str]:
@@ -53,11 +79,7 @@ def from_form(form) -> tuple[dict, dict[str, str]]:
         data[f] = str(form.get(f) or "").strip()
     data["links"] = _lines(str(form.get("links") or ""))
     data["summary"] = str(form.get("summary") or "").strip()
-    data["skills"] = list(
-        dict.fromkeys(
-            s.strip() for s in re.split(r"[,\n;]", str(form.get("skills") or "")) if s.strip()
-        )
-    )
+    data["skills"], data["skill_groups"] = parse_skills(str(form.get("skills") or ""))
     rows: dict[tuple[str, int], dict] = {}
     for key in form.keys():
         m = _KEY.match(key)
@@ -91,7 +113,7 @@ def from_form(form) -> tuple[dict, dict[str, str]]:
 def full_text(data: dict) -> str:
     """Everything in the master resume as plain text (the honesty reference, FR-008)."""
     d = normalise(data)
-    parts = [d["name"], d["summary"], *d["skills"]]
+    parts = [d["name"], d["headline"], d["summary"], *d["skills"]]
     for e in d["experience"]:
         parts += [
             e.get("title", ""),

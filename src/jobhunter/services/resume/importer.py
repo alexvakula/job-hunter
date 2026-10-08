@@ -62,6 +62,8 @@ _EMAIL = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
 _PHONE = re.compile(r"(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}")
 _LINK = re.compile(r"(?:https?://|www\.|linkedin\.com/|github\.com/)\S+", re.IGNORECASE)
 _CITY = re.compile(r"\b([A-Z][a-zA-Z.'-]+(?:\s[A-Z][a-zA-Z.'-]+)*),\s*([A-Z]{2})\b")
+WRAP_WIDTH = 70  # characters; a PDF bullet line this long probably continues on the next line
+_LABEL = re.compile(r"^\s*([^:,]{1,25}):\s*(.*)$")  # "Tools: Jira, Postman"
 _BULLET = re.compile(r"^\s*[•●▪◦\-*·]\s*")
 _SPLITS = (" at ", " | ", " — ", " – ", " - ", ", ")
 _DEGREE = re.compile(
@@ -121,11 +123,23 @@ def lines_from_pdf(data: bytes) -> list[Line]:
 
     reader = PdfReader(io.BytesIO(data))
     text = "\n".join((page.extract_text() or "") for page in reader.pages)
-    return [
-        Line(_BULLET.sub("", t.strip()), bullet=bool(_BULLET.match(t)))
-        for t in text.splitlines()
-        if t.strip()
-    ]
+    out: list[Line] = []
+    last = ""  # previous physical line of a bullet or "Label: …" line; long ones wrapped
+    for t in (t.strip() for t in text.splitlines()):
+        if not t:
+            continue
+        bullet = bool(_BULLET.match(t))
+        line = Line(_BULLET.sub("", t), bullet=bullet)
+        labeled = bool(_LABEL.match(t))
+        wrapped = len(last) >= WRAP_WIDTH and not (
+            bullet or labeled or DATE_RANGE.search(t) or _section_of(line)
+        )
+        if wrapped:
+            out[-1].text += " " + t
+        else:
+            out.append(line)
+        last = t if bullet or labeled or wrapped else ""
+    return out
 
 
 def _section_of(line: Line) -> str | None:
@@ -143,12 +157,27 @@ def _title_employer(text: str) -> tuple[str, str]:
     return text.strip(), ""
 
 
+def _is_title_line(line: Line | None) -> bool:
+    return (
+        line is not None
+        and not line.bullet
+        and not DATE_RANGE.search(line.text)
+        and len(line.text) <= 80
+        and not line.text.endswith((".", ":"))
+    )
+
+
 def _parse_experience(lines: list[Line]) -> list[dict]:
     entries: list[dict] = []
     current: dict | None = None
+    title_next = False  # "Employer, Location  dates" was read; the next line is the job title
     for i, line in enumerate(lines):
         dates = DATE_RANGE.search(line.text)
         nxt = lines[i + 1] if i + 1 < len(lines) else None
+        if title_next and current is not None:
+            title_next = False
+            current["title"] = line.text
+            continue
         if line.bullet and current is not None:
             current["bullets"].append(line.text)
             continue
@@ -160,10 +189,14 @@ def _parse_experience(lines: list[Line]) -> list[dict]:
                     current["location"] = rest
                 continue
             title, employer = _title_employer(rest) if rest else ("", "")
+            location = ""
+            if rest and _is_title_line(nxt) and not any(s in rest for s in _SPLITS[:4]):
+                employer, _, location = rest.partition(", ")
+                title, title_next = "", True
             current = {
                 "employer": employer,
                 "title": title,
-                "location": "",
+                "location": location,
                 "start": dates.group("start"),
                 "end": dates.group("end"),
                 "bullets": [],
@@ -259,6 +292,11 @@ def parse_lines(lines: list[Line]) -> dict:
     if m := _CITY.search("\n".join(line.text for line in header[1:])):
         data["location"] = m.group(0)
     data["links"] = list(dict.fromkeys(_LINK.findall(header_text)))
+    for line in header[1:]:  # a short line that is not contact details: "Software QA Lead"
+        t = line.text
+        if not any(r.search(t) for r in (_EMAIL, _PHONE, _LINK, _CITY)) and len(t) <= 80:
+            data["headline"] = t
+            break
 
     data["summary"] = " ".join(line.text for line in sections.get("summary", []))
     data["experience"] = _parse_experience(sections.get("experience", []))
@@ -269,10 +307,12 @@ def parse_lines(lines: list[Line]) -> dict:
     ]
     skills: list[str] = []
     for line in sections.get("skills", []):
-        for part in re.split(r"[,;|•]", line.text):
-            part = re.sub(r"^[^:]{1,25}:\s*", "", part).strip()  # "Tools: Jira" -> "Jira"
-            if part:
-                skills.append(part)
+        for segment in re.split(r"[;|•]", line.text):
+            m = _LABEL.match(segment)
+            items = [p.strip() for p in (m.group(2) if m else segment).split(",") if p.strip()]
+            if m and items:
+                data["skill_groups"].append({"label": m.group(1).strip(), "skills": items})
+            skills += items
     data["skills"] = list(dict.fromkeys(skills))
     return data
 
