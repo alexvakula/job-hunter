@@ -443,12 +443,15 @@ class JobSuggestion(SQLModel, table=True):
 
 
 class WatchCompany(SQLModel, table=True):
-    """A company whose public job board is checked daily (per user)."""
+    """A company whose public job board is checked daily. The watchlist is shared by all
+    users; each user's searches match its postings against their own target positions."""
 
     __tablename__ = "watch_company"
 
     id: int | None = Field(default=None, primary_key=True)
-    user_id: int = Field(sa_column=_fk("user_account.id"))
+    added_by: int | None = Field(
+        default=None, sa_column=_fk("user_account.id", ondelete="SET NULL", nullable=True)
+    )
     name: str = Field(max_length=200)
     website: str | None = None
     # greenhouse | lever | ashby | workday | pinpoint | rippling | jazzhr | jobvite |

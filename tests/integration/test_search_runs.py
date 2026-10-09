@@ -21,10 +21,10 @@ def _uid(session, name="alice"):
     return session.exec(select(UserAccount.id).where(UserAccount.username == name)).one()
 
 
-def _watch(session, user_id, board_type, board_id="acme", host=None, site=None, name="Acme"):
+def _watch(session, added_by, board_type, board_id="acme", host=None, site=None, name="Acme"):
     session.add(
         WatchCompany(
-            user_id=user_id,
+            added_by=added_by,
             name=name,
             board_type=board_type,
             board_id=board_id,
@@ -155,7 +155,7 @@ def test_more_boards_are_searched(two_users, session, app):
     ).one()
     assert sr.work_mode == "hybrid" and "asset planning software" in sr.description
     assert "boilerplate" not in sr.description
-    companies = session.exec(select(WatchCompany).where(WatchCompany.user_id == uid)).all()
+    companies = session.exec(select(WatchCompany)).all()
     assert {c.status for c in companies} == {"ok"}
     assert fake.headers["https://acme.careers.hibob.com/api/job-ad"] == {
         "companyIdentifier": "acme"
@@ -342,7 +342,7 @@ def test_other_users_get_nothing(setup, session):
     _, bob, uid, _ = setup
     bob.post("/sources/import")
     bob_id = _uid(session, "bob")
-    assert _titles(session, bob_id) == []  # bob has no positions or watchlist
+    assert _titles(session, bob_id) == []  # bob has no target positions to match
     assert "Senior QA Lead" not in bob.get("/suggestions").text
 
 

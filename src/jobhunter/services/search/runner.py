@@ -365,7 +365,6 @@ def _read_board(fetcher, source, board, company_name, titles):
 def _run_watchlist(session, user_id, profiles, fetcher, stats: SourceStats) -> None:
     companies = session.exec(
         select(WatchCompany).where(
-            WatchCompany.user_id == user_id,
             WatchCompany.paused.is_(False),
             WatchCompany.board_type != "unknown",
         )

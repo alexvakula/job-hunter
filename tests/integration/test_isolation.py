@@ -152,6 +152,8 @@ def test_other_users_objects_are_not_found(app, two_users, alice_objects, sessio
                         "description": "hacked",
                     },
                 )
+            if route.path.startswith("/watchlist/"):
+                continue  # the watchlist is shared (test_watchlist.test_watchlist_is_shared)
             # Admin pages refuse non-admins outright; everything else hides alice's objects.
             admin_only = route.path.startswith(
                 ("/admin", "/claude", "/resume/claude-import")

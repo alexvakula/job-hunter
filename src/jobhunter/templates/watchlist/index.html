@@ -2,7 +2,7 @@
 {% block title %}Company watchlist{% endblock %}
 {% block content %}
 <h1>Company watchlist</h1>
-<p class="muted">Companies whose job boards are checked every morning. Postings that match your target positions appear under Suggestions.</p>
+<p class="muted">Companies whose job boards are checked every morning. The list is shared by everyone using the app; postings that match your own target positions appear under Suggestions.</p>
 {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 {% if notice %}<p class="flash">{{ notice }}</p>{% endif %}
 <div class="row">
@@ -25,7 +25,7 @@
 {% if progress.total %}<p class="muted">Imported list: {{ progress.checked }} of {{ progress.total }} checked, {{ progress.found }} job boards found.{% if progress.checked < progress.total %} Still searching in the background; reload to update.{% endif %}</p>{% endif %}
 {% if companies %}
 <div class="table-wrap"><table>
-  <thead><tr><th>Company</th><th>Board</th><th>Status</th><th>Last checked</th><th></th></tr></thead>
+  <thead><tr><th>Company</th><th>Board</th><th>Status</th><th>Last checked</th><th>Added by</th><th></th></tr></thead>
   <tbody>
   {% for c in companies %}
   <tr{% if c.paused %} class="muted"{% endif %}>
@@ -33,6 +33,7 @@
     <td>{{ labels[c.board_type] }}{% if c.board_id %} <span class="muted">{{ c.board_id }}{% if c.board_site %}/{{ c.board_site }}{% endif %}</span>{% endif %}</td>
     <td>{% if c.paused %}paused{% elif c.status == 'not_found' %}board not found{% elif c.status == 'pending' %}looking for board…{% elif c.status == 'error' %}<span class="error">{{ c.last_error }}</span>{% else %}ok{% endif %}</td>
     <td class="muted">{{ c.last_checked_at|local_dt if c.last_checked_at else '—' }}</td>
+    <td class="muted">{{ adders.get(c.added_by, '—') }}</td>
     <td>
       {% if c.board_type == 'unknown' and c.discovery_done %}
       <details><summary class="link">Set careers link</summary>

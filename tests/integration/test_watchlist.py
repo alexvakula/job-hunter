@@ -38,7 +38,7 @@ def test_add_by_link(two_users, session, inline):
     bad = alice.post("/watchlist", data={"careers_url": "https://acme.com/careers"})
     assert bad.status_code == 422 and "Greenhouse, Lever" in bad.text
     dup = alice.post("/watchlist", data={"careers_url": "https://jobs.lever.co/acme/123"})
-    assert dup.status_code == 422 and "already on your watchlist" in dup.text
+    assert dup.status_code == 422 and "already on the watchlist" in dup.text
     lever, wd = _companies(session)
     assert (lever.board_type, lever.board_id, lever.status) == ("lever", "acme", "ok")
     assert (wd.board_host, wd.board_site) == ("acme.wd3.myworkdayjobs.com", "Careers")
@@ -236,3 +236,22 @@ def test_discovery_errors_mean_not_found(two_users, session, inline):
     inline.routes = {"https://": (FETCH_FAILED, "timeout")}
     alice.post("/watchlist/import", files={"file": ("x.csv", b"Company\nZeta\n", "text/csv")})
     assert _companies(session)[0].status == "not_found"
+
+
+def test_watchlist_is_shared(two_users, session, inline):
+    alice, bob = two_users
+    alice.post("/watchlist", data={"careers_url": "https://jobs.lever.co/acme", "name": "Acme"})
+    (c,) = _companies(session)
+    cid = c.id
+    page = bob.get("/watchlist").text
+    assert "Acme" in page and "Alice" in page  # shows who added it
+    dup = bob.post("/watchlist", data={"careers_url": "https://jobs.lever.co/acme/123"})
+    assert dup.status_code == 422 and "already on the watchlist" in dup.text
+    resp = bob.post("/watchlist/import", files={"file": ("x.csv", b"Company\nacme\n", "text/csv")})
+    assert "Imported 0 companies (1 duplicates skipped)" in resp.text
+    assert bob.post(f"/watchlist/{c.id}/pause").status_code == 303
+    session.refresh(c)
+    assert c.paused
+    assert bob.post(f"/watchlist/{cid}/delete").status_code == 303
+    assert _companies(session) == []
+    assert bob.post(f"/watchlist/{cid}/delete").status_code == 404

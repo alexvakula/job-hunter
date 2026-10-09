@@ -1,18 +1,19 @@
-"""Company watchlist and CSV import (feature 003 US2, US3; FR-008–FR-010)."""
+"""Company watchlist and CSV import (feature 003 US2, US3; FR-008–FR-010).
+
+The watchlist is shared: every user sees and edits the same companies."""
 
 import csv
 import io
 import threading
 from collections.abc import Callable
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import RedirectResponse
 from sqlalchemy import func
-from sqlmodel import Session
+from sqlmodel import Session, select
 from starlette.datastructures import UploadFile
 
-from jobhunter import repo
 from jobhunter.auth.sessions import csrf_protect, current_user
 from jobhunter.db import get_engine, get_session
 from jobhunter.models import UserAccount, WatchCompany
@@ -60,19 +61,26 @@ def get_launcher():
     return start_in_background
 
 
+def _company(db: Session, company_id: int) -> WatchCompany:
+    c = db.get(WatchCompany, company_id)
+    if c is None:
+        raise HTTPException(status_code=404)
+    return c
+
+
 def _page(request, db, user, status_code=200, **extra):
     companies = db.exec(
-        repo.scoped(WatchCompany, user.id).order_by(
-            WatchCompany.status != "ok", func.lower(WatchCompany.name)
-        )
+        select(WatchCompany).order_by(WatchCompany.status != "ok", func.lower(WatchCompany.name))
     ).all()
+    adders = {u.id: u.display_name for u in db.exec(select(UserAccount)).all()}
     return render(
         request,
         "watchlist/index.html",
         status_code=status_code,
         companies=companies,
-        progress=discovery.progress(db, user.id),
+        progress=discovery.progress(db),
         labels=BOARD_LABELS,
+        adders=adders,
         **extra,
     )
 
@@ -104,17 +112,17 @@ async def add_company(
         )
     name = str(form.get("name") or "").strip()[:200] or board.board_id
     clash = db.exec(
-        repo.scoped(WatchCompany, user.id).where(
+        select(WatchCompany).where(
             WatchCompany.board_type == board.type,
             WatchCompany.board_id == board.board_id,
             WatchCompany.board_site == board.site,
         )
     ).first()
     if clash is not None:
-        return _page(request, db, user, 422, error=f"{clash.name} is already on your watchlist.")
+        return _page(request, db, user, 422, error=f"{clash.name} is already on the watchlist.")
     db.add(
         WatchCompany(
-            user_id=user.id,
+            added_by=user.id,
             name=name,
             board_type=board.type,
             board_id=board.board_id,
@@ -184,8 +192,7 @@ async def import_csv(
     except ValueError as exc:
         return _page(request, db, user, 422, error=str(exc))
     existing = {
-        (c.name.lower(), (c.website or "").lower())
-        for c in db.exec(repo.scoped(WatchCompany, user.id)).all()
+        (c.name.lower(), (c.website or "").lower()) for c in db.exec(select(WatchCompany)).all()
     }
     names = {n for n, _ in existing}
     sites = {s for _, s in existing if s}
@@ -196,15 +203,13 @@ async def import_csv(
         names.add(name.lower())
         if site:
             sites.add(site.lower())
-        db.add(WatchCompany(user_id=user.id, name=name, website=site, imported=True))
+        db.add(WatchCompany(added_by=user.id, name=name, website=site, imported=True))
         added += 1
     db.commit()
 
-    user_id = user.id
-
     def discover_all():
         with Session(get_engine()) as s:
-            while discovery.run_batch(s, fetcher, user_id):
+            while discovery.run_batch(s, fetcher):
                 pass
 
     launcher(discover_all)
@@ -222,7 +227,7 @@ async def import_csv(
 def pause(
     company_id: int, user: UserAccount = Depends(current_user), db: Session = Depends(get_session)
 ):
-    c = repo.get_owned(db, WatchCompany, company_id, user.id)
+    c = _company(db, company_id)
     c.paused = not c.paused
     db.add(c)
     db.commit()
@@ -233,7 +238,7 @@ def pause(
 def delete(
     company_id: int, user: UserAccount = Depends(current_user), db: Session = Depends(get_session)
 ):
-    db.delete(repo.get_owned(db, WatchCompany, company_id, user.id))
+    db.delete(_company(db, company_id))
     db.commit()
     return RedirectResponse("/watchlist", status_code=303)
 
@@ -246,7 +251,7 @@ async def set_link(
     db: Session = Depends(get_session),
     fetcher: Fetcher = Depends(get_fetcher),
 ):
-    c = repo.get_owned(db, WatchCompany, company_id, user.id)
+    c = _company(db, company_id)
     url = str((await request.form()).get("careers_url") or "").strip()
     board = await run_in_threadpool(discovery.resolve_link, db, url, fetcher)
     if board is None:

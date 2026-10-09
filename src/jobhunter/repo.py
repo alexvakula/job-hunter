@@ -18,7 +18,6 @@ from jobhunter.models import (
     SearchRun,
     TailoredResume,
     TargetProfile,
-    WatchCompany,
 )
 
 # Tables that carry user_id directly.
@@ -28,7 +27,6 @@ OWNED_TOP_LEVEL = (
     ResumeFile,
     EmailMessage,
     JobSuggestion,
-    WatchCompany,
     SearchRun,
     TailoredResume,
     DocumentVersion,

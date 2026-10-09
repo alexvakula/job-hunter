@@ -116,18 +116,16 @@ def discover_one(session: Session, company: WatchCompany, fetcher: Fetcher) -> N
     session.commit()
 
 
-def pending(session: Session, user_id: int | None = None) -> list[WatchCompany]:
+def pending(session: Session) -> list[WatchCompany]:
     stmt = select(WatchCompany).where(
         WatchCompany.discovery_done.is_(False), WatchCompany.board_type == "unknown"
     )
-    if user_id is not None:
-        stmt = stmt.where(WatchCompany.user_id == user_id)
     return list(session.exec(stmt.order_by(WatchCompany.id).limit(BATCH)).all())
 
 
-def run_batch(session: Session, fetcher: Fetcher | None = None, user_id: int | None = None) -> int:
+def run_batch(session: Session, fetcher: Fetcher | None = None) -> int:
     fetcher = fetcher or get_fetcher()
-    batch = pending(session, user_id)
+    batch = pending(session)
     for company in batch:
         try:
             discover_one(session, company, fetcher)
@@ -137,8 +135,8 @@ def run_batch(session: Session, fetcher: Fetcher | None = None, user_id: int | N
     return len(batch)
 
 
-def progress(session: Session, user_id: int) -> dict:
-    companies = session.exec(select(WatchCompany).where(WatchCompany.user_id == user_id)).all()
+def progress(session: Session) -> dict:
+    companies = session.exec(select(WatchCompany)).all()
     imported = [c for c in companies if c.imported]
     return {
         "total": len(imported),
