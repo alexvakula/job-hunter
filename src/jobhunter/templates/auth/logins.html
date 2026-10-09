@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Login history{% endblock %}
+{% block content %}
+<h1>Login history{% if not own %} — {{ person.display_name }}{% endif %}</h1>
+{% if not own %}{% include "admin/_nav.html" %}{% endif %}
+<p class="muted">{% if own %}Your{% else %}{{ person.display_name }}'s{% endif %} logins over the last 180 days. {% if own %}You and the admin can see this list.{% else %}{{ person.display_name }} can see this list too, under Settings.{% endif %}
+The place is worked out from the internet address: it is the city of the internet provider's network, not a street address, and it can be wrong.</p>
+{% if events %}
+<div class="table-wrap">
+<table>
+  <thead><tr><th>When</th><th>Approximate place</th><th>Device</th><th>Internet address</th></tr></thead>
+  <tbody>
+  {% for e in events %}
+  <tr><td>{{ e.at|local_dt }}</td><td>{{ e.location or 'unknown' }}</td><td>{{ e.device }}</td><td>{{ e.ip }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}<p>No logins recorded yet.</p>{% endif %}
+<p class="muted small">{{ attribution|safe }}</p>
+{% endblock %}

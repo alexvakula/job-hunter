@@ -58,6 +58,23 @@ def users(request: Request, db: Session = Depends(get_session)):
     return _users_page(request, db)
 
 
+@router.get("/users/{user_id}/logins")
+def user_logins(user_id: int, request: Request, db: Session = Depends(get_session)):
+    from jobhunter.services import login_history
+
+    person = db.get(UserAccount, user_id)
+    if person is None:
+        raise repo.not_found()
+    return render(
+        request,
+        "auth/logins.html",
+        person=person,
+        events=login_history.for_user(db, user_id),
+        own=False,
+        attribution=login_history.ATTRIBUTION,
+    )
+
+
 @router.get("/users/new")
 def new_user_form(request: Request):
     return render(request, "admin/user_form.html", form={})

@@ -48,6 +48,12 @@ def run_all_checks() -> None:
             discovery.run_batch(session)
         except Exception:  # noqa: BLE001
             log.exception("board discovery batch failed")
+        try:
+            from jobhunter.services import login_history
+
+            login_history.refresh_if_due()
+        except Exception:  # noqa: BLE001
+            log.exception("IP location database refresh failed")
 
 
 def queue_daily_claude(session: Session) -> None:

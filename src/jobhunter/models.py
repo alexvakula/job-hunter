@@ -112,6 +112,19 @@ class UserSession(SQLModel, table=True):
     last_seen_at: datetime = Field(default_factory=utcnow)
 
 
+class LoginEvent(SQLModel, table=True):
+    """A successful login, shown to the user themself and to the admin (login history)."""
+
+    __tablename__ = "login_event"
+
+    id: int | None = Field(default=None, primary_key=True)
+    user_id: int = Field(sa_column=_fk("user_account.id"))
+    at: datetime = Field(default_factory=utcnow)
+    ip: str = ""
+    location: str = ""  # approximate, from the IP: "Calgary, Alberta, Canada"
+    device: str = ""  # from the browser's User-Agent: "Chrome on Windows"
+
+
 class LoginAttempt(SQLModel, table=True):
     __tablename__ = "login_attempt"
     __table_args__ = (Index("ix_login_attempt_lookup", "username", "ip", "at"),)

@@ -22,6 +22,7 @@ def db_path(tmp_path, monkeypatch) -> Path:
     monkeypatch.setenv("DATABASE_PATH", str(path))
     monkeypatch.setenv("COOKIE_SECURE", "false")
     monkeypatch.setenv("APP_TIMEZONE", "America/Edmonton")
+    monkeypatch.setenv("GEOIP_DOWNLOAD", "off")  # tests never fetch the IP database
 
     from jobhunter import config, db
 

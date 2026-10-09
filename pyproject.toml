@@ -21,6 +21,7 @@ dependencies = [
     "pypdf>=6.19.0",
     "fpdf2>=2.8.9",
     "jsonschema>=4.26.0",
+    "maxminddb>=2.6",
 ]
 
 [project.scripts]

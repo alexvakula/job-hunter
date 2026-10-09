@@ -23,6 +23,7 @@ from jobhunter.auth.sessions import (
 )
 from jobhunter.db import get_session, utcnow
 from jobhunter.models import UserAccount
+from jobhunter.services import login_history
 from jobhunter.web import render
 
 router = APIRouter()
@@ -94,6 +95,7 @@ def login(
     user.last_login_at = utcnow()
     db.add(user)
     db.commit()
+    login_history.record(db, user, ip, request.headers.get("user-agent", ""))
     session_row = create_session(db, user)
     response = RedirectResponse(safe_next(next) or "/", status_code=303)
     set_cookie(response, SESSION_COOKIE, session_row.id)
@@ -142,3 +144,15 @@ def change_password(
     response = RedirectResponse("/", status_code=303)
     set_flash(response, "password_changed")
     return response
+
+
+@router.get("/account/logins")
+def my_logins(request: Request, auth: Auth = Depends(get_auth), db: Session = Depends(get_session)):
+    return render(
+        request,
+        "auth/logins.html",
+        person=auth.user,
+        events=login_history.for_user(db, auth.user.id),
+        own=True,
+        attribution=login_history.ATTRIBUTION,
+    )
