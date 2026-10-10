@@ -297,3 +297,20 @@ def test_abtec_directory_card(two_users):
         "/jobs/prefill", data={"url": "https://technologyalberta.com/abtec-5000/", "text": ""}
     )
     assert ">ABTEC 5000</option>" in resp.text and "let Job Hunter download its pages" in resp.text
+
+
+def test_job_site_email_can_be_linked_to_a_job(two_users, box, session):
+    alice, _ = two_users
+    _setup(alice)
+    box.deliver_fixture("linkedin_alert_1.eml")
+    alice.post("/mail/check")
+    email = _emails(session)[0]
+    assert email.kind == "alert"
+    assert "Link to job" in alice.get(f"/mail/{email.id}").text
+    job_url = alice.post("/jobs", data={"title": "QA Lead", "company": "Acme"}).headers["location"]
+    job_id = int(job_url.rsplit("/", 1)[1])
+    alice.post(f"/mail/{email.id}/link", data={"job_id": str(job_id)})
+    session.expire_all()
+    email = _emails(session)[0]
+    assert email.job_id == job_id and email.kind == "alert"
+    assert email.subject in alice.get(job_url).text

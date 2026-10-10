@@ -28,7 +28,6 @@
 </section>
 {% endif %}
 
-{% if email.kind != 'alert' %}
 <section class="card">
   <h2>Job</h2>
   {% if job %}<p>Linked to <a href="/jobs/{{ job.id }}">{{ job.title }} at {{ job.company }}</a> <span class="muted">({{ email.link_method }})</span></p>{% endif %}
@@ -42,7 +41,6 @@
     <div><button type="submit" class="btn btn-small">Save</button></div>
   </form>
 </section>
-{% endif %}
 
 <section class="card email-body">
   {% if email.body_html %}{{ email.body_html|safe }}{% else %}<div class="description">{{ email.body_text }}</div>{% endif %}

@@ -5,13 +5,16 @@ pattern; every anchor pointing at a job is a listed job, its text is the title, 
 text that follows (until the next job link) gives company and location.
 """
 
+import base64
+import gzip
 import html as html_lib
+import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from urllib.parse import parse_qs, urlsplit
 
-from bs4 import BeautifulSoup, NavigableString, Tag
+from bs4 import BeautifulSoup, Comment, NavigableString, Tag
 from sqlmodel import Session, select
 
 from jobhunter.models import EmailMessage, Job, JobSuggestion, Source
@@ -31,15 +34,35 @@ def _linkedin(href: str) -> str | None:
     return f"https://www.linkedin.com/jobs/view/{m.group(1)}" if m else None
 
 
+def _unwrap_indeed_cts(href: str) -> str | None:
+    """cts.indeed.com/v3/<gzip+base64 JSON>/… click trackers carry the real link as "u"."""
+    m = re.search(r"cts\.indeed\.com/v3/([A-Za-z0-9_-]+)", href)
+    if not m:
+        return None
+    seg = m.group(1)
+    try:
+        data = json.loads(gzip.decompress(base64.urlsafe_b64decode(seg + "=" * (-len(seg) % 4))))
+    except (ValueError, OSError, EOFError):
+        return None
+    url = data.get("u") if isinstance(data, dict) else None
+    return url if isinstance(url, str) else None
+
+
 def _indeed(href: str) -> str | None:
+    href = _unwrap_indeed_cts(href) or href
     parts = urlsplit(href)
     host = (parts.hostname or "").lower()
     if not host.endswith("indeed.com"):
         return None
-    jk = parse_qs(parts.query).get("jk", [None])[0]
+    query = parse_qs(parts.query)
+    jk = query.get("jk", [None])[0]
+    if not jk and parts.path.startswith("/pagead/clk"):
+        # Sponsored listings: jrtk=5-cmh1-1-<tracking>-<job key>
+        jrtk = query.get("jrtk", [""])[0]
+        jk = jrtk.rsplit("-", 1)[-1] if jrtk.count("-") >= 4 else None
     if not jk or not re.fullmatch(r"[0-9a-f]{8,20}", jk):
         return None
-    if host.startswith(("jobalert.", "click.", "engage.")):
+    if host.startswith(("jobalert.", "click.", "engage.", "match.", "cts.")):
         host = "ca.indeed.com"
     return f"https://{host}/viewjob?jk={jk}"
 
@@ -69,6 +92,8 @@ PARSERS: dict[str, Callable[[str], str | None]] = {
     "Job Bank": _jobbank,
 }
 _SEPARATORS = (" · ", " • ", " | ", " - ", " – ")
+# Button labels that link to a job but are not its title; a later link with a real title wins.
+_BUTTON_TEXT = {"view job", "apply now", "apply", "learn more", "see job", "view details"}
 
 
 def _following_lines(anchor: Tag, canon: Callable[[str], str | None], limit: int = 3) -> list[str]:
@@ -81,7 +106,11 @@ def _following_lines(anchor: Tag, canon: Callable[[str], str | None], limit: int
             and canon(html_lib.unescape(el["href"]))
         ):
             break
-        if isinstance(el, NavigableString) and el.find_parent("a") is not anchor:
+        if (
+            isinstance(el, NavigableString)
+            and not isinstance(el, Comment)
+            and el.find_parent("a") is not anchor
+        ):
             text = " ".join(str(el).split())
             if text and el.parent is not None and el.parent.name not in ("script", "style"):
                 lines.append(text)
@@ -112,8 +141,12 @@ def parse_alert(html: str | None, text: str, source_name: str) -> list[AlertJob]
         if url is None:
             continue
         title = " ".join(anchor.get_text(" ", strip=True).split())
-        if not title or url in jobs:
-            continue  # image-only links, or the same job linked twice
+        if not title:
+            continue  # image-only links
+        if url in jobs and (
+            jobs[url].title.lower() not in _BUTTON_TEXT or title.lower() in _BUTTON_TEXT
+        ):
+            continue  # the same job linked twice
         company, location = _company_location(_following_lines(anchor, canon))
         jobs[url] = AlertJob(title=title[:200], company=company, location=location, url=url)
     return list(jobs.values())
