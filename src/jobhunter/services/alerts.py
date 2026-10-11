@@ -152,16 +152,103 @@ def parse_alert(html: str | None, text: str, source_name: str) -> list[AlertJob]
     return list(jobs.values())
 
 
-def create_suggestions(session: Session, email: EmailMessage, source: Source) -> int:
-    """Store suggestions for an alert email; returns how many new ones were created."""
-    created = 0
-    raw_html = None
+def _alert_jobs(email: EmailMessage, source: Source) -> list[AlertJob]:
     from jobhunter.services.mail_store import parse_email, raw_path
 
+    raw_html = None
     path = raw_path(email)
     if path is not None and path.exists():
         raw_html = parse_email(path.read_bytes()).body_html  # unsanitised links needed
-    for job in parse_alert(raw_html or email.body_html, email.body_text, source.name):
+    return parse_alert(raw_html or email.body_html, email.body_text, source.name)
+
+
+def _named_in(text: str, *names: str | None) -> bool:
+    """Whether any of the names appears in the text as whole words (ignoring case)."""
+    for name in names:
+        name = " ".join((name or "").split())
+        if len(name) >= 2 and re.search(rf"(?<!\w){re.escape(name)}(?!\w)", text, re.I):
+            return True
+    return False
+
+
+def link_to_job(
+    session: Session, email: EmailMessage, source: Source, found: list[AlertJob]
+) -> None:
+    """Link a job-site email to the one tracked job it is about (never over a manual link).
+
+    The email must name the job in its subject, and either link to its posting (saved-job
+    reminders, single-job matches) or, when it has no job links at all (application
+    confirmations), the job must come from the same site, its full title be in the subject and
+    its company in the body.
+    Digests listing several tracked jobs stay unlinked unless the subject singles one out.
+    """
+    if email.link_method == "manual" or email.job_id is not None:
+        return
+    subject = email.subject or ""
+    hits: set[int] = set()
+    for alert_job in found:
+        url_norm = normalize_url(alert_job.url)
+        job = session.exec(
+            select(Job).where(Job.user_id == email.user_id, Job.url_norm == url_norm)
+        ).first()
+        if job is not None and _named_in(subject, job.title, job.company, alert_job.title):
+            hits.add(job.id)
+    method = "job link"
+    if not found:
+        from jobhunter.services.mail_link import registrable
+
+        site = {registrable(d) for d in source.domains or []} - {None}
+        body = email.body_text or ""
+        if email.body_html:
+            body += " " + BeautifulSoup(email.body_html, "html.parser").get_text(" ")
+        for job in session.exec(select(Job).where(Job.user_id == email.user_id)).all():
+            host = registrable(urlsplit(job.url).hostname) if job.url else None
+            if host in site and _named_in(subject, job.title) and _named_in(body, job.company):
+                hits.add(job.id)
+        method = "subject"
+    if len(hits) == 1:
+        email.job_id, email.link_method, email.candidates = hits.pop(), method, []
+        session.add(email)
+
+
+def link_emails_to_new_job(session: Session, job: Job) -> None:
+    """Link earlier job-site emails about a job that was only just added."""
+    candidates = (
+        {
+            s.email_id
+            for s in session.exec(
+                select(JobSuggestion).where(
+                    JobSuggestion.user_id == job.user_id,
+                    JobSuggestion.url_norm == job.url_norm,
+                    JobSuggestion.email_id.is_not(None),
+                )
+            ).all()
+        }
+        if job.url_norm
+        else set()
+    )
+    alerts = session.exec(
+        select(EmailMessage).where(
+            EmailMessage.user_id == job.user_id,
+            EmailMessage.kind == "alert",
+            EmailMessage.job_id.is_(None),
+            EmailMessage.source_id.is_not(None),
+        )
+    ).all()
+    for email in alerts:
+        if email.id in candidates or _named_in(email.subject or "", job.title):
+            source = session.get(Source, email.source_id)
+            if source is not None:
+                link_to_job(session, email, source, _alert_jobs(email, source))
+    session.commit()
+
+
+def create_suggestions(session: Session, email: EmailMessage, source: Source) -> int:
+    """Store suggestions for an alert email; returns how many new ones were created."""
+    created = 0
+    found = _alert_jobs(email, source)
+    link_to_job(session, email, source, found)
+    for job in found:
         url_norm = normalize_url(job.url)
         if url_norm is None:
             continue

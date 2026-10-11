@@ -376,7 +376,7 @@ class EmailMessage(SQLModel, table=True):
     job_id: int | None = Field(
         default=None, sa_column=_fk("job.id", ondelete="SET NULL", nullable=True)
     )
-    link_method: str = "none"  # reply | contact | domain | manual | none
+    link_method: str = "none"  # reply | contact | domain | job link | subject | manual | none
     candidates: list[int] = Field(default_factory=list, sa_column=Column(JSON, nullable=False))
     source_id: int | None = Field(
         default=None, sa_column=_fk("source.id", ondelete="SET NULL", nullable=True)

@@ -314,3 +314,87 @@ def test_job_site_email_can_be_linked_to_a_job(two_users, box, session):
     email = _emails(session)[0]
     assert email.job_id == job_id and email.kind == "alert"
     assert email.subject in alice.get(job_url).text
+
+
+def _job(client, title, company, url):
+    resp = client.post("/jobs", data={"title": title, "company": company, "url": url})
+    return int(resp.headers["location"].rsplit("/", 1)[1])
+
+
+def _alert(session, subject_part):
+    return next(e for e in _emails(session) if subject_part in (e.subject or ""))
+
+
+def test_job_site_email_auto_links_to_the_job_it_names(two_users, box, session):
+    alice, _ = two_users
+    _setup(alice)
+    # Tracked, and linked from the email, but the subject is about another job: no link.
+    _job(
+        alice,
+        "Senior Test Manager",
+        "Northwind Analytics",
+        "https://www.linkedin.com/jobs/view/4012345679",
+    )
+    box.deliver_fixture("linkedin_alert_1.eml")
+    alice.post("/mail/check")
+    email = _alert(session, "Acme Robotics")
+    assert email.kind == "alert" and email.job_id is None
+
+    # Adding the job the subject names links the earlier email.
+    acme = _job(alice, "QA Lead", "Acme Robotics", "https://www.linkedin.com/jobs/view/4012345678/")
+    email = _alert(session, "Acme Robotics")
+    assert email.job_id == acme and email.link_method == "job link" and email.kind == "alert"
+    assert "Acme Robotics - QA Lead and more" in alice.get(f"/jobs/{acme}").text
+
+    # A manual choice is never overridden.
+    alice.post(f"/mail/{email.id}/link", data={"job_id": ""})
+    alice.post(f"/jobs/{acme}/delete", data={"confirm": "yes"})
+    _job(alice, "QA Lead", "Acme Robotics", "https://www.linkedin.com/jobs/view/4012345678/")
+    assert _alert(session, "Acme Robotics").job_id is None
+
+
+def _indeed_mail(msg_id, subject, body):
+    return (
+        f"From: Indeed Apply <indeedapply@indeed.com>\r\nTo: alice.jobs@example.org\r\n"
+        f"Subject: {subject}\r\nMessage-ID: <{msg_id}@indeed.com>\r\n"
+        f"Date: Mon, 05 Oct 2026 10:00:00 -0600\r\nContent-Type: text/html; charset=utf-8\r\n\r\n"
+        f"<html><body>{body}</body></html>\r\n"
+    ).encode()
+
+
+def test_application_confirmation_links_by_title_and_company(two_users, box, session):
+    alice, _ = two_users
+    _setup(alice)
+    job = _job(
+        alice, "Lead QA Developer", "AlgaeCal", "https://ca.indeed.com/viewjob?jk=ae295afec62d2559"
+    )
+    box.deliver(
+        _indeed_mail(
+            "ia-1",
+            "Indeed Application: Lead QA Developer",
+            '<p>Your application has been submitted.</p><a href="https://ca.indeed.com/cmp/Algaecal">AlgaeCal</a>',
+        )
+    )
+    box.deliver(
+        _indeed_mail(
+            "ia-2",
+            "Your job alert for Lead QA Developer jobs is now active",
+            "<p>Alert set up.</p>",
+        )
+    )
+    alice.post("/mail/check")
+    confirmation = _alert(session, "Indeed Application")
+    assert confirmation.job_id == job and confirmation.link_method == "subject"
+    assert _alert(session, "Your job alert").job_id is None
+
+
+def test_deleting_a_job_keeps_linked_alerts_as_alerts(two_users, box, session):
+    alice, _ = two_users
+    _setup(alice)
+    acme = _job(alice, "QA Lead", "Acme Robotics", "https://www.linkedin.com/jobs/view/4012345678/")
+    box.deliver_fixture("linkedin_alert_1.eml")
+    alice.post("/mail/check")
+    assert _alert(session, "Acme Robotics").job_id == acme
+    alice.post(f"/jobs/{acme}/delete", data={"confirm": "yes"})
+    email = _alert(session, "Acme Robotics")
+    assert email.job_id is None and email.kind == "alert"

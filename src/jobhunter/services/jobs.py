@@ -188,6 +188,9 @@ def create_job(session: Session, user_id: int, values: dict, confirm_possible: b
     )
     session.commit()
     session.refresh(job)
+    from jobhunter.services.alerts import link_emails_to_new_job
+
+    link_emails_to_new_job(session, job)
     return job
 
 
@@ -211,14 +214,18 @@ def delete_job(session: Session, job: Job) -> None:
     for model in (StatusChange, Note, Contact, FollowUp):
         session.exec(delete(model).where(model.job_id == job.id))
     # Emails and suggestions are kept, unlinked (feature 002 FR-017).
-    from sqlalchemy import update
+    from sqlalchemy import case, update
 
     from jobhunter.models import EmailMessage, JobSuggestion
 
     session.exec(
         update(EmailMessage)
         .where(EmailMessage.job_id == job.id)
-        .values(job_id=None, link_method="none", kind="other")
+        .values(
+            job_id=None,
+            link_method="none",
+            kind=case((EmailMessage.kind == "employer", "other"), else_=EmailMessage.kind),
+        )
     )
     session.exec(update(JobSuggestion).where(JobSuggestion.job_id == job.id).values(job_id=None))
     session.delete(job)
