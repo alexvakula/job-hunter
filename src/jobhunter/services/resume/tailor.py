@@ -10,6 +10,30 @@ def _relevance(text: str, keywords: list[str]) -> int:
     return sum(1 for k in keywords if ats.present(k, text))
 
 
+def posting_terms(master: dict, keywords: list[str]) -> list[str]:
+    """Posting keywords missing from the master that a tailored resume adds for matching.
+
+    Only known practices, tools and languages; never certifications or leadership claims.
+    """
+    reference = full_text(normalise(master))
+    return [
+        k
+        for k in keywords
+        if k in ats.TERMS and k not in ats.NEVER_ADDED and not ats.present(k, reference)
+    ]
+
+
+def top_up_from_posting(master: dict, skills: list[dict], keywords: list[str]) -> list[dict]:
+    """Add the posting's missing skills a draft lacks, in the posting's own wording.
+
+    Skills already listed (even hidden) stay as they are; the added ones are marked so the
+    apply page can offer them with a box to untick.
+    """
+    names = {s["name"].casefold() for s in skills}
+    added = [k for k in posting_terms(master, keywords) if k.casefold() not in names]
+    return skills + [{"name": k, "hidden": False, "from_posting": True} for k in added]
+
+
 def build_draft(master: dict, keywords: list[str]) -> dict:
     m = normalise(master)
     experience = []
@@ -22,6 +46,7 @@ def build_draft(master: dict, keywords: list[str]) -> dict:
         experience.append({"id": exp["id"], "bullets": bullets})
     skills = [{"name": s, "hidden": False} for s in m["skills"]]
     skills.sort(key=lambda s: -_relevance(s["name"], keywords))
+    skills = top_up_from_posting(m, skills, keywords)
     return {"summary": m["summary"], "experience": experience, "skills": skills}
 
 
@@ -49,9 +74,17 @@ def apply_form(draft: dict, form) -> dict:
     skills = []
     for i, s in enumerate(draft["skills"]):
         key = f"s-{i}"
+        if form.get(key + "-offer"):  # a posting skill offered with an "add" box
+            hidden = form.get(key + "-add") != "1"
+        else:
+            hidden = form.get(key + "-hidden") == "1"
+        group = form.get(key + "-group")  # "main" or "exposure": which box it was dragged to
+        exposure = group == "exposure" if group else bool(s.get("exposure"))
         skills.append(
             (
-                {"name": s["name"], "hidden": form.get(key + "-hidden") == "1"},
+                {"name": s["name"], "hidden": hidden}
+                | ({"from_posting": True} if s.get("from_posting") else {})
+                | ({"exposure": True} if exposure else {}),
                 _int(form.get(key + "-pos"), i + 1),
             )
         )
@@ -84,7 +117,8 @@ def snapshot(master: dict, draft: dict) -> dict:
             {k: e.get(k, "") for k in ("employer", "title", "location", "start", "end")}
             | {"bullets": bullets}
         )
-    skills = [s["name"] for s in draft["skills"] if not s["hidden"]]
+    skills = [s["name"] for s in draft["skills"] if not s["hidden"] and not s.get("exposure")]
+    exposure = [s["name"] for s in draft["skills"] if not s["hidden"] and s.get("exposure")]
     return {
         "name": m["name"],
         "headline": m["headline"] or (m["experience"][0]["title"] if m["experience"] else ""),
@@ -96,8 +130,8 @@ def snapshot(master: dict, draft: dict) -> dict:
         "experience": experience,
         "education": m["education"],
         "certifications": m["certifications"],
-        "skills": skills,
-        "skill_groups": _skill_groups(m["skill_groups"], skills),
+        "skills": skills + exposure,
+        "skill_groups": _with_exposure(_skill_groups(m["skill_groups"], skills), exposure),
     }
 
 
@@ -116,6 +150,57 @@ def _skill_groups(groups: list[dict], skills: list[str]) -> list[dict]:
     if rest:
         out.append({"label": "Other", "skills": rest})
     return out
+
+
+def _with_exposure(groups: list[dict], exposure: list[str]) -> list[dict]:
+    """Skills moved to the "Exposure" box go last, joining the master's own group if any."""
+    if not exposure:
+        return groups
+    for g in groups:
+        if g["label"].casefold() == "exposure":
+            g["skills"] = list(dict.fromkeys([*g["skills"], *exposure]))
+            return groups
+    return [*groups, {"label": "Exposure", "skills": exposure}]
+
+
+def _unrelated(name: str, keywords: list[str]) -> bool:
+    """A skill the posting never mentions that is not a known QA/dev term either."""
+    if any(ats.present(k, name) for k in keywords) or ats.extract_keywords(name):
+        return False
+    return "test" not in name.casefold()
+
+
+def skill_analysis(master: dict, skills: list[dict], keywords: list[str], visible: str) -> dict:
+    """The posting's skills against the resume, and the resume's skills it could do without.
+
+    rows: one per posting keyword, state "have" (in the tailored resume), "hidden" (in the
+    master but not shown), "offer" (added from the posting; index/checked for its box)
+    or "no" (not added: reason says why). remove: indexes of skills to suggest hiding.
+    """
+    reference = full_text(normalise(master))
+    offered = {s["name"]: i for i, s in enumerate(skills) if s.get("from_posting")}
+    rows = []
+    for k in keywords:
+        if k in offered:
+            checked = not skills[offered[k]]["hidden"]
+            rows.append({"term": k, "state": "offer", "index": offered[k], "checked": checked})
+        elif ats.present(k, visible):
+            rows.append({"term": k, "state": "have"})
+        elif ats.present(k, reference):
+            rows.append({"term": k, "state": "hidden"})
+        else:
+            reason = (
+                "certification or leadership: add it to your master resume if true"
+                if k in ats.NEVER_ADDED
+                else "not a known skill: add it to your master resume if true"
+            )
+            rows.append({"term": k, "state": "no", "reason": reason})
+    remove = [
+        i
+        for i, s in enumerate(skills)
+        if s["name"] not in offered and not s["hidden"] and _unrelated(s["name"], keywords)
+    ]
+    return {"rows": rows, "remove": remove}
 
 
 def visible_text(snap: dict) -> str:

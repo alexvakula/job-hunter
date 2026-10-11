@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}Job Hunter{% endblock %} · Job Hunter</title>
-  <link rel="stylesheet" href="/static/app.css?v=20261007">
+  <link rel="stylesheet" href="/static/app.css?v=20261011">
   <script src="/static/vendor/htmx.min.js" defer></script>
   {% block head %}{% endblock %}
-  <script src="/static/app.js" defer></script>
+  <script src="/static/app.js?v=20261011" defer></script>
 </head>
 <body{% if csrf_token %} hx-headers='{"X-CSRF-Token": "{{ csrf_token }}"}'{% endif %}>
   {% if current_user %}

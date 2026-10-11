@@ -79,6 +79,19 @@ input.pos { width: 3.2rem; display: inline-block; margin: 0; padding: 4px; text-
 .skill-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .skill { border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; display: inline-flex; gap: 6px; align-items: center; }
 .skill label.check { margin: 0; font-weight: 400; }
+.skill-analysis { list-style: none; padding: 0; columns: 2 18em; margin: 0 0 12px; }
+.skill-analysis li { break-inside: avoid; padding: 2px 0; }
+.skill-analysis label.check { display: inline; margin: 0; font-weight: 400; }
+.ok { color: var(--ok); font-weight: 600; }
+.skill-boxes { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 12px; }
+.skill-boxes h5 { margin: 0 0 6px; }
+.skill-drop { min-height: 48px; padding: 8px; border: 1px dashed var(--line); border-radius: 8px; align-content: flex-start; }
+.skill.is-hidden { opacity: .55; text-decoration: line-through; }
+.drag-handle { display: none; cursor: grab; color: var(--muted); }
+.skills-sortable .drag-handle { display: inline; }
+.skills-sortable .pos, .skills-sortable .group-select { display: none; }
+.skill.sortable-ghost { opacity: .4; }
+@media (max-width: 640px) { .skill-boxes { grid-template-columns: 1fr; } }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin: 0 0 16px; overflow-x: auto; }
 .tabs a { padding: 8px 14px; text-decoration: none; color: var(--muted); font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; }
 .tabs a:hover { color: var(--fg); }

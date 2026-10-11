@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Apply: {{ job.title }}{% endblock %}
+{% block head %}<script src="/static/vendor/Sortable.min.js" defer></script>{% endblock %}
 {% block content %}
 <p><a href="/jobs/{{ job.id }}">← {{ job.title }} at {{ job.company }}</a></p>
 <h1>Apply: {{ job.title }} <span class="muted">at {{ job.company }}</span></h1>
@@ -41,12 +42,36 @@
     </div>
     {% endfor %}
   </fieldset>{% endif %}{% endfor %}
-  <h3>Skills</h3>
-  <div class="skill-grid">
-  {% for s in t.skills %}
-    <span class="skill"><input class="pos" name="s-{{ loop.index0 }}-pos" value="{{ loop.index }}" inputmode="numeric" aria-label="Order"> {{ s.name }}
-      <label class="check"><input type="checkbox" name="s-{{ loop.index0 }}-hidden" value="1"{% if s.hidden %} checked{% endif %}> hide</label></span>
+  <h3 id="skills">Skills</h3>
+  {% if analysis.rows %}
+  <h4>Skills in the posting</h4>
+  <p class="muted small">Missing skills are added to your skills in the posting's wording and start ticked for the best match. Untick any you couldn't talk about in an interview.</p>
+  <ul class="skill-analysis">
+  {% for r in analysis.rows %}
+    <li>{% if r.state == 'have' %}<span class="ok">✓</span> {{ r.term }} <span class="muted small">in your resume</span>
+    {% elif r.state == 'hidden' %}<span class="muted">✓ {{ r.term }} <span class="small">in your master resume, hidden here</span></span>
+    {% elif r.state == 'offer' %}<input type="hidden" name="s-{{ r.index }}-offer" value="1">
+      <label class="check"><input type="checkbox" name="s-{{ r.index }}-add" value="1"{% if r.checked %} checked{% endif %}> {{ r.term }}</label> <span class="badge">add to skills</span>
+    {% else %}<span class="muted">– {{ r.term }} <span class="small">{{ r.reason }}</span></span>{% endif %}</li>
   {% endfor %}
+  </ul>
+  {% endif %}
+  <h4>Your skills</h4>
+  {% if analysis.remove %}<p class="small"><strong>Could be removed for this job</strong> (not in the posting, not testing-related): {% for i in analysis.remove %}{{ t.skills[i].name }}{% if not loop.last %}, {% endif %}{% endfor %}. Tick "hide" on any you want to drop.</p>{% endif %}
+  <p class="muted small">Drag skills between the boxes or to reorder them. "Exposure" is printed as its own line for tools you are familiar with but not expert in.</p>
+  {% macro chip(s, i) %}
+    <span class="skill{% if s.hidden %} is-hidden{% endif %}" data-index="{{ i }}"><span class="drag-handle" aria-hidden="true">⠿</span>
+      <input class="pos" name="s-{{ i }}-pos" value="{{ i + 1 }}" inputmode="numeric" aria-label="Order"> {{ s.name }}
+      <select name="s-{{ i }}-group" class="group-select" aria-label="Box for {{ s.name }}"><option value="main">Skills</option><option value="exposure"{% if s.exposure %} selected{% endif %}>Exposure</option></select>
+      {% if s.from_posting %}<span class="badge" title="From the posting; tick or untick it above">from posting</span>{% if s.hidden %} <span class="muted small">unticked</span>{% endif %}
+      {% else %}{% if i in analysis.remove %}<span class="badge" title="Not in the posting and not testing-related">not in posting</span>{% endif %}
+      <label class="check"><input type="checkbox" name="s-{{ i }}-hidden" value="1"{% if s.hidden %} checked{% endif %}> hide</label>{% endif %}</span>
+  {% endmacro %}
+  <div class="skill-boxes">
+    <div><h5>Skills</h5>
+      <div class="skill-grid skill-drop" data-group="main">{% for s in t.skills %}{% if not s.exposure %}{{ chip(s, loop.index0) }}{% endif %}{% endfor %}</div></div>
+    <div><h5>Exposure</h5>
+      <div class="skill-grid skill-drop" data-group="exposure">{% for s in t.skills %}{% if s.exposure %}{{ chip(s, loop.index0) }}{% endif %}{% endfor %}</div></div>
   </div>
   <h2>Cover letter</h2>
   <textarea name="cover_letter" rows="16">{{ t.cover_letter }}</textarea>

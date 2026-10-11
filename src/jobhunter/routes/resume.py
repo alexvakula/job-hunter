@@ -137,6 +137,13 @@ def _draft(db, user, job, master: MasterResume, keywords) -> TailoredResume:
         db.add(t)
         db.commit()
         db.refresh(t)
+    else:
+        skills = tailor.top_up_from_posting(master.data, t.skills, keywords)
+        if len(skills) != len(t.skills):  # drafts made before these were added
+            t.skills = skills
+            db.add(t)
+            db.commit()
+            db.refresh(t)
     return t
 
 
@@ -148,7 +155,9 @@ def _apply_context(db, user, job, master, t, keywords) -> dict:
     draft = _as_draft(t)
     snap = tailor.snapshot(master.data, draft)
     master_cov = ats.coverage(keywords, model.full_text(master.data))
-    tailored_cov = ats.coverage(keywords, tailor.visible_text(snap))
+    visible = tailor.visible_text(snap)
+    tailored_cov = ats.coverage(keywords, visible)
+    analysis = tailor.skill_analysis(master.data, t.skills, keywords, visible)
     flags = tailor.honesty_flags(master.data, tailor.editable_text(draft, t.cover_letter), keywords)
     m = model.normalise(master.data)
     facts = {e["id"]: e for e in m["experience"]}
@@ -166,6 +175,7 @@ def _apply_context(db, user, job, master, t, keywords) -> dict:
         "keywords": keywords,
         "master_cov": master_cov,
         "tailored_cov": tailored_cov,
+        "analysis": analysis,
         "flags": flags,
         "versions": doc_versions,
         "stale": master.updated_at > t.updated_at,

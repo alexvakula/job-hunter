@@ -10,6 +10,7 @@ from jobhunter.models import (
     Job,
     MasterResume,
     StatusChange,
+    TailoredResume,
     UserAccount,
 )
 from jobhunter.services import mailer
@@ -124,7 +125,9 @@ def test_hide_and_reorder(ready, session):
     exp = v.content["resume"]["experience"][0]
     assert exp["bullets"][0] == "Mentored 5 testers; tracked defects in Jira."
     assert "Introduced quarterly release reviews with product owners." not in exp["bullets"]
-    assert len(v.content["resume"]["skills"]) == len(MASTER["skills"]) - 1
+    hidden = [s["name"] for s in session.exec(select(TailoredResume)).one().skills if s["hidden"]]
+    shown = v.content["resume"]["skills"]
+    assert len(hidden) == 1 and [m for m in MASTER["skills"] if m not in shown] == hidden
 
 
 def test_versions_are_immutable_and_downloadable(ready, session):
@@ -304,3 +307,40 @@ def test_application_draft_discard(sendable):
     alice.post(f"/jobs/{job_id}/apply/save", data={"body": "draft"})
     r = alice.post(f"/jobs/{job_id}/apply/discard")
     assert r.status_code == 303 and "No drafts" in alice.get("/mail?view=drafts").text
+
+
+def test_skill_analysis_offers_posting_skills_and_suggests_removals(ready, session):
+    alice, _, job_id = ready
+    page = alice.get(f"/jobs/{job_id}/apply").text
+    assert "Skills in the posting" in page
+    t = session.exec(select(TailoredResume)).one()
+    i = next(i for i, s in enumerate(t.skills) if s["name"] == "JMeter")
+    assert f'name="s-{i}-add" value="1" checked' in page and "add to skills" in page
+    assert "ISTQB" not in [s["name"] for s in t.skills]  # certifications are never added
+    # Unticking an offered skill leaves it out of the generated resume.
+    form = {"summary": "QA leader.", "cover_letter": "Hi", f"s-{i}-offer": "1"}
+    alice.post(f"/jobs/{job_id}/apply/tailor", data=form)
+    session.expire_all()
+    t = session.exec(select(TailoredResume)).one()
+    assert t.skills[i] == {"name": "JMeter", "hidden": True, "from_posting": True}
+    assert f'name="s-{i}-add" value="1">' in alice.get(f"/jobs/{job_id}/apply").text
+    alice.post(f"/jobs/{job_id}/apply/generate")
+    v = session.exec(select(DocumentVersion)).one()
+    assert "JMeter" not in v.content["resume"]["skills"]
+    assert "GitHub Actions" in v.content["resume"]["skills"]
+
+
+def test_skill_dragged_to_exposure_prints_on_its_own_line(ready, session):
+    alice, _, job_id = ready
+    page = alice.get(f"/jobs/{job_id}/apply").text
+    assert 'data-group="exposure"' in page and "Sortable.min.js" in page
+    t = session.exec(select(TailoredResume)).one()
+    i = next(i for i, s in enumerate(t.skills) if s["name"] == "Python")
+    form = {"summary": "QA leader.", "cover_letter": "Hi", f"s-{i}-group": "exposure"}
+    alice.post(f"/jobs/{job_id}/apply/tailor", data=form)
+    page = alice.get(f"/jobs/{job_id}/apply").text
+    exposure_box = page.split('data-group="exposure"', 1)[1].split("</div>", 1)[0]
+    assert "Python" in exposure_box
+    alice.post(f"/jobs/{job_id}/apply/generate")
+    v = session.exec(select(DocumentVersion)).one()
+    assert v.content["resume"]["skill_groups"][-1] == {"label": "Exposure", "skills": ["Python"]}

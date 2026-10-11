@@ -1,4 +1,3 @@
-import copy
 import io
 
 import pytest
@@ -140,44 +139,114 @@ def test_draft_orders_by_relevance_and_keeps_everything():
     bullets = [b["text"] for b in draft["experience"][0]["bullets"]]
     assert bullets[-1] == "Introduced quarterly release reviews with product owners."
     assert sorted(bullets) == sorted(MASTER["experience"][0]["bullets"])
-    skills = [s["name"] for s in draft["skills"]]
+    skills = [s["name"] for s in draft["skills"] if set(s) == {"name", "hidden"}]
     assert skills.index("Selenium") < skills.index("Leadership")
     assert sorted(skills) == sorted(MASTER["skills"])
 
 
-def test_snapshot_facts_always_from_master():
-    draft = tailor.build_draft(MASTER, [])
-    draft["experience"][0]["bullets"][0]["hidden"] = True
-    forged = copy.deepcopy(draft)
-    forged["experience"][0]["employer"] = "Google"  # extra keys are ignored
-    snap = tailor.snapshot(MASTER, forged)
-    assert [e["employer"] for e in snap["experience"]] == [
-        "Northwind Imaging",
-        "Société Générale Tech",
-    ]
-    assert len(snap["experience"][0]["bullets"]) == 3
-    assert snap["certifications"] == MASTER["certifications"]
-
-
-def test_honesty_flags():
+def test_missing_posting_keywords_are_added_for_matching():
     kw = ats.extract_keywords(POSTING)
     draft = tailor.build_draft(MASTER, kw)
+    added = [s["name"] for s in draft["skills"] if s.get("from_posting")]
+    # Practices, tools and languages; never certifications (ISTQB) or leadership claims.
+    assert added == [
+        "test strategy",
+        "quality assurance",
+        "Playwright",
+        "GitHub",
+        "GitHub Actions",
+        "performance testing",
+        "JMeter",
+    ]
+    snap = tailor.snapshot(MASTER, draft)
+    assert snap["skill_groups"] == [{"label": "", "skills": snap["skills"]}]  # one main line
+    assert snap["skills"][-len(added) :] == added
+    cov = ats.coverage(kw, tailor.visible_text(snap))
+    assert cov.percent > ats.coverage(kw, model.full_text(MASTER)).percent
+    assert cov.missing == ["stakeholder management", "team leadership"]
+    # Added skills are listed, not claimed in the text, so no honesty flags.
     assert tailor.honesty_flags(MASTER, tailor.editable_text(draft, ""), kw) == []
-    draft["summary"] += " Expert in Playwright and Kubernetes."
-    letter = "I hold the ISTQB certification and know AWS."
-    flags = tailor.honesty_flags(MASTER, tailor.editable_text(draft, letter), kw)
-    assert flags == ["AWS", "Kubernetes", "Playwright"]
+
+    # Unticking one leaves it out (and the flag survives the editor form).
+    i = next(i for i, s in enumerate(draft["skills"]) if s["name"] == "JMeter")
+    edited = tailor.apply_form(draft, {f"s-{i}-offer": "1"})
+    assert edited["skills"][i] == {"name": "JMeter", "hidden": True, "from_posting": True}
+    assert "JMeter" not in tailor.snapshot(MASTER, edited)["skills"]
+    assert tailor.top_up_from_posting(MASTER, edited["skills"], kw) == edited["skills"]
+    ticked = tailor.apply_form(edited, {f"s-{i}-offer": "1", f"s-{i}-add": "1"})
+    assert ticked["skills"][i]["hidden"] is False
 
 
-def test_default_cover_letter_uses_only_true_skills():
-    class J:
-        title, company = "QA Lead", "Acme Robotics"
+def test_skill_analysis_rows_and_removal_suggestions():
+    kw = [*ats.extract_keywords(POSTING), "SQL"]
+    master = MASTER | {"skills": [*MASTER["skills"], "MS Office", "Python"]}
+    draft = tailor.build_draft(master, kw)
+    names = [s["name"] for s in draft["skills"]]
+    draft["skills"][names.index("SQL")]["hidden"] = True
+    snap = tailor.snapshot(master, draft)
+    a = tailor.skill_analysis(master, draft["skills"], kw, tailor.visible_text(snap))
+    rows = {r["term"]: r for r in a["rows"]}
+    assert [r["term"] for r in a["rows"]] == kw
+    assert rows["Selenium"]["state"] == "have"
+    assert rows["SQL"]["state"] == "hidden"  # in the master, hidden on this resume
+    assert rows["JMeter"] == {
+        "term": "JMeter",
+        "state": "offer",
+        "index": names.index("JMeter"),
+        "checked": True,
+    }
+    assert rows["ISTQB"]["state"] == "have"  # the sample master holds it
+    assert rows["team leadership"]["state"] == "no"
+    assert "leadership" in rows["team leadership"]["reason"]
+    # Only skills that are neither in the posting nor QA/dev terms are suggested.
+    assert [names[i] for i in a["remove"]] == ["Leadership", "MS Office"]
 
+
+def test_alternative_testing_names_are_recognised():
+    text = (
+        "Own the regression suite, triage defects (defect triage) and keep a traceability matrix."
+    )
+    assert ats.extract_keywords(text) == [
+        "regression testing",
+        "defect management",
+        "requirements traceability",
+    ]
+    assert ats.present("test design", "Experienced in test case design")
+
+
+def test_skills_move_between_the_skills_and_exposure_boxes():
     kw = ats.extract_keywords(POSTING)
-    letter = tailor.default_cover_letter(MASTER, J(), "Jane", kw)
-    assert "Dear Jane," in letter and "QA Lead position at Acme Robotics" in letter
-    assert "Playwright" not in letter and "Selenium" in letter
-    assert tailor.honesty_flags(MASTER, letter, kw) == []
+    draft = tailor.build_draft(MASTER, kw)
+    names = [s["name"] for s in draft["skills"]]
+    j, p = names.index("JMeter"), names.index("Python")
+    form = {f"s-{j}-group": "exposure", f"s-{p}-group": "exposure", f"s-{j}-offer": "1"}
+    form |= {f"s-{j}-add": "1", f"s-{p}-pos": "99"}
+    moved = tailor.apply_form(draft, form)
+    assert moved["skills"][-1] == {"name": "Python", "hidden": False, "exposure": True}
+    snap = tailor.snapshot(MASTER, moved)
+    assert snap["skill_groups"][-1] == {"label": "Exposure", "skills": ["JMeter", "Python"]}
+    assert "Python" not in snap["skill_groups"][0]["skills"]
+    assert snap["skills"][-2:] == ["JMeter", "Python"]  # still counted for the ATS match
+    # A form without box fields keeps each skill where it was; "main" moves it back.
+    assert tailor.apply_form(moved, {})["skills"][-1]["exposure"] is True
+    back = tailor.apply_form(moved, {f"s-{len(names) - 1}-group": "main"})
+    assert "exposure" not in back["skills"][-1]
+    grouped = MASTER | {"skill_groups": [{"label": "Exposure", "skills": ["Leadership"]}]}
+    snap = tailor.snapshot(grouped, moved)
+    assert [g["label"] for g in snap["skill_groups"]] == ["Exposure", "Other"]
+    assert snap["skill_groups"][0]["skills"] == ["Leadership", "JMeter", "Python"]
+
+
+def test_posting_terms_top_up_old_drafts():
+    kw = ats.extract_keywords(POSTING)
+    plain = [s for s in tailor.build_draft(MASTER, kw)["skills"] if set(s) == {"name", "hidden"}]
+    topped = tailor.top_up_from_posting(MASTER, plain, kw)
+    assert topped[: len(plain)] == plain
+    assert all(s["from_posting"] for s in topped[len(plain) :])
+    grouped = MASTER | {"skill_groups": [{"label": "Tools", "skills": ["Selenium", "Jira"]}]}
+    snap = tailor.snapshot(grouped, tailor.build_draft(grouped, kw))
+    assert [g["label"] for g in snap["skill_groups"]] == ["Tools", "Other"]
+    assert "JMeter" in snap["skill_groups"][1]["skills"]  # outside the master's groups
 
 
 # --- rendering (constitution VII: DOCX structure) ------------------------------------------

@@ -45,8 +45,29 @@ window.initBoard = function () {
   }
 };
 
+// Apply page: drag skills between the "Skills" and "Exposure" boxes. Dropping rewrites each
+// chip's hidden order and box fields, so the normal Save stores it (no JS: edit them directly).
+window.initSkillBoxes = function () {
+  const boxes = document.querySelectorAll(".skill-drop");
+  if (!window.Sortable || !boxes.length) return;
+  const renumber = () => {
+    let n = 1;
+    boxes.forEach((box) => {
+      box.querySelectorAll(".skill").forEach((chip) => {
+        chip.querySelector(".pos").value = n++;
+        chip.querySelector(".group-select").value = box.dataset.group;
+      });
+    });
+  };
+  boxes.forEach((box) => {
+    box.closest(".skill-boxes").classList.add("skills-sortable");
+    Sortable.create(box, { group: "skills", animation: 120, filter: "input, select, label", preventOnFilter: false, onEnd: renumber });
+  });
+};
+
 document.addEventListener("DOMContentLoaded", () => {
   if (document.querySelector(".kanban-list")) window.initBoard();
+  window.initSkillBoxes();
 });
 
 // Settings > target position: "+ Another place" clones the last rule row with fresh indexes.

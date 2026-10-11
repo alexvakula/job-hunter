@@ -4,8 +4,8 @@ import re
 from dataclasses import dataclass, field
 
 # canonical term -> spelling variants (lower case). Kept focused on software/QA work.
-TERMS: dict[str, tuple[str, ...]] = {
-    # testing practice
+# Testing practices: postings name the same work many ways, so variants matter most here.
+PRACTICES: dict[str, tuple[str, ...]] = {
     "test automation": (
         "test automation",
         "automated testing",
@@ -14,10 +14,21 @@ TERMS: dict[str, tuple[str, ...]] = {
         "test automation framework",
     ),
     "manual testing": ("manual testing",),
-    "regression testing": ("regression testing", "regression tests"),
-    "performance testing": ("performance testing", "load testing", "stress testing"),
+    "regression testing": (
+        "regression testing",
+        "regression tests",
+        "regression suite",
+        "regression suites",
+    ),
+    "performance testing": (
+        "performance testing",
+        "load testing",
+        "stress testing",
+        "performance tests",
+        "scalability testing",
+    ),
     "security testing": ("security testing", "penetration testing"),
-    "API testing": ("api testing", "api tests"),
+    "API testing": ("api testing", "api tests", "api automation", "api test automation"),
     "integration testing": ("integration testing",),
     "unit testing": ("unit testing", "unit tests"),
     "end-to-end testing": ("end-to-end testing", "e2e testing", "end to end testing"),
@@ -29,11 +40,64 @@ TERMS: dict[str, tuple[str, ...]] = {
     "test plans": ("test plan", "test plans", "test planning"),
     "test cases": ("test case", "test cases"),
     "test management": ("test management",),
-    "defect management": ("defect management", "defect tracking", "bug tracking"),
+    "defect management": (
+        "defect management",
+        "defect tracking",
+        "bug tracking",
+        "defect triage",
+        "bug triage",
+        "defect lifecycle",
+    ),
     "risk-based testing": ("risk-based testing", "risk based testing"),
     "TDD": ("tdd", "test-driven development", "test driven development"),
     "BDD": ("bdd", "behavior-driven development", "behaviour-driven development"),
     "shift-left": ("shift-left", "shift left"),
+    "functional testing": ("functional testing", "functional tests"),
+    "non-functional testing": ("non-functional testing", "nonfunctional testing"),
+    "smoke testing": ("smoke testing", "smoke tests"),
+    "sanity testing": ("sanity testing", "sanity checks"),
+    "system testing": ("system testing", "system integration testing", "system tests"),
+    "acceptance testing": ("acceptance testing", "acceptance criteria", "acceptance tests"),
+    "black-box testing": ("black-box testing", "black box testing"),
+    "white-box testing": ("white-box testing", "white box testing"),
+    "usability testing": ("usability testing",),
+    "cross-browser testing": (
+        "cross-browser testing",
+        "cross browser testing",
+        "browser compatibility",
+    ),
+    "compatibility testing": ("compatibility testing", "device compatibility"),
+    "data-driven testing": ("data-driven testing", "data driven testing"),
+    "contract testing": ("contract testing", "consumer-driven contract"),
+    "visual testing": ("visual testing", "visual regression"),
+    "static testing": ("static testing", "reviews and inspections"),
+    "release testing": ("release testing", "release validation", "release readiness"),
+    "embedded testing": (
+        "embedded testing",
+        "embedded software testing",
+        "hardware-in-the-loop",
+        "hil testing",
+    ),
+    "test design": ("test design", "test case design", "test scenarios"),
+    "test data management": ("test data management", "test data"),
+    "test environments": ("test environment", "test environments"),
+    "test reporting": ("test reporting", "test reports", "test metrics", "quality metrics"),
+    "test coverage": ("test coverage", "code coverage", "coverage analysis"),
+    "test documentation": ("test documentation", "test artifacts", "test artefacts"),
+    "test estimation": ("test estimation", "test effort estimation"),
+    "requirements analysis": ("requirements analysis", "requirement analysis"),
+    "requirements traceability": ("requirements traceability", "traceability matrix", "rtm"),
+    "verification and validation": ("verification and validation", "v&v"),
+    "root cause analysis": ("root cause analysis", "root-cause analysis"),
+    "quality assurance": ("quality assurance",),
+    "quality engineering": ("quality engineering",),
+    "QA processes": ("qa process", "qa processes", "quality processes", "testing processes"),
+    "service virtualization": ("service virtualization", "mock services", "mock api", "mocking"),
+    "Page Object Model": ("page object model", "page object pattern", "page objects"),
+}
+
+TERMS: dict[str, tuple[str, ...]] = {
+    **PRACTICES,
     # tools
     "Selenium": ("selenium", "webdriver"),
     "Cypress": ("cypress",),
@@ -42,6 +106,13 @@ TERMS: dict[str, tuple[str, ...]] = {
     "TestNG": ("testng",),
     "JUnit": ("junit",),
     "pytest": ("pytest",),
+    "NUnit": ("nunit",),
+    "xUnit": ("xunit",),
+    "Jest": ("jest",),
+    "Mocha": ("mocha",),
+    "WireMock": ("wiremock",),
+    "WinAppDriver": ("winappdriver",),
+    "Locust": ("locust",),
     "Cucumber": ("cucumber", "gherkin"),
     "Postman": ("postman",),
     "SoapUI": ("soapui",),
@@ -124,6 +195,18 @@ TERMS: dict[str, tuple[str, ...]] = {
     "PMP": ("pmp",),
     "Certified ScrumMaster": ("certified scrummaster", "certified scrum master", "csm"),
 }
+# Never added to a tailored resume from the posting: credentials and leadership claims are
+# facts, not something to read up on before an interview.
+NEVER_ADDED = {
+    "ISTQB",
+    "CSQA",
+    "CSTE",
+    "PMP",
+    "Certified ScrumMaster",
+    "team leadership",
+    "mentoring",
+    "stakeholder management",
+}
 _IGNORE_ACRONYMS = {
     "US",
     "USA",
@@ -190,6 +273,7 @@ def extract_keywords(text: str) -> list[str]:
     known = {v.upper() for variants in TERMS.values() for v in variants} | {
         t.upper() for t in terms
     }
+    known |= {part for k in known for part in re.split(r"[/&\s-]+", k) if part}  # CI/CD: CI, CD
     counts: dict[str, int] = {}
     for a in _ACRONYM.findall(text):
         if a not in _IGNORE_ACRONYMS and a not in known:
